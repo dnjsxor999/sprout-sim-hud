@@ -1,0 +1,111 @@
+[
+ {
+  "id": "advanced_tasks/000_tabletop_random_moving_s0_claude",
+  "title": "tabletop_random_moving, seed 0",
+  "scene": "tabletop_random_moving",
+  "seed": 0,
+  "outcome": "success",
+  "duration_s": 161.395,
+  "bytes": 8766952,
+  "group": "advanced_tasks"
+ },
+ {
+  "id": "advanced_tasks/001_loco_two_rooms_s0_claude",
+  "title": "loco_two_rooms, seed 0",
+  "scene": "loco_two_rooms",
+  "seed": 0,
+  "outcome": "failed:timeout",
+  "duration_s": 901.856,
+  "bytes": 12589081,
+  "group": "advanced_tasks"
+ },
+ {
+  "id": "advanced_tasks/002_home_living_room_s0_claude",
+  "title": "home_living_room, seed 0",
+  "scene": "home_living_room",
+  "seed": 0,
+  "outcome": "failed:object_dropped",
+  "duration_s": 630.663,
+  "bytes": 40329883,
+  "group": "advanced_tasks"
+ },
+ {
+  "id": "advanced_tasks/004_home_dining_room_s0_claude",
+  "title": "home_dining_room, seed 0",
+  "scene": "home_dining_room",
+  "seed": 0,
+  "outcome": "success",
+  "duration_s": 737.949,
+  "bytes": 24372518,
+  "group": "advanced_tasks"
+ },
+ {
+  "id": "advanced_tasks/012_home_kids_bedroom_s0_claude",
+  "title": "home_kids_bedroom, seed 0",
+  "scene": "home_kids_bedroom",
+  "seed": 0,
+  "outcome": "failed:timeout",
+  "duration_s": 902.634,
+  "bytes": 37122104,
+  "group": "advanced_tasks"
+ },
+ {
+  "id": "basic_tasks/007_tabletop_random_cube_s3_claude",
+  "title": "tabletop_random_cube, seed 3",
+  "scene": "tabletop_random_cube",
+  "seed": 3,
+  "outcome": "success",
+  "duration_s": 89.059,
+  "bytes": 8199983,
+  "group": "basic_tasks"
+ },
+ {
+  "id": "basic_tasks/009_loco_tabletop_random_simple_s1_claude",
+  "title": "loco_tabletop_random_simple, seed 1",
+  "scene": "loco_tabletop_random_simple",
+  "seed": 1,
+  "outcome": "success",
+  "duration_s": 84.171,
+  "bytes": 8131887,
+  "group": "basic_tasks"
+ },
+ {
+  "id": "basic_tasks/012_loco_two_tables_s0_claude",
+  "title": "loco_two_tables, seed 0",
+  "scene": "loco_two_tables",
+  "seed": 0,
+  "outcome": "success",
+  "duration_s": 173.753,
+  "bytes": 8738736,
+  "group": "basic_tasks"
+ },
+ {
+  "id": "basic_tasks/016_halab_twin_loco_mani_basic_s0_claude",
+  "title": "halab_twin_loco_mani_basic, seed 0",
+  "scene": "halab_twin_loco_mani_basic",
+  "seed": 0,
+  "outcome": "success",
+  "duration_s": 377.194,
+  "bytes": 31505698,
+  "group": "basic_tasks"
+ },
+ {
+  "id": "interesting/003_tabletop_random_s3_claude",
+  "title": "tabletop_random, seed 3",
+  "scene": "tabletop_random",
+  "seed": 3,
+  "outcome": "failed:object_dropped",
+  "duration_s": 539.048,
+  "bytes": 10846259,
+  "group": "interesting"
+ },
+ {
+  "id": "tabletop_random_s3",
+  "title": "Tabletop pick and place, seed 3",
+  "scene": "tabletop_random",
+  "seed": 3,
+  "outcome": "success",
+  "duration_s": 119.83,
+  "bytes": 8383949
+ }
+]

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion-based agentic control</title>
+  <meta name="description" content="A language model plans with a memory of motions; JEV decides and edits each motion to the scene; the engine runs and watches it. Live or replayed next to the MuJoCo simulation.">
+  <meta name="color-scheme" content="dark light">
+  <script>
+    // Before anything renders: the theme (a stored choice or ?theme=, else the system's) and the debug sink, which
+    // collects window errors, unhandled rejections and console errors into #debug (shown with ?debug=1).
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var theme = q.get('theme');
+      if (theme !== 'light' && theme !== 'dark') {
+        try { theme = localStorage.getItem('sprout-hud-theme'); } catch (e) { theme = null; }
+      }
+      if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+      // ?still=1: no animations (a headless capture renders no frame between a change and the screenshot)
+      if (q.get('still') === '1') document.documentElement.classList.add('still');
+      var lines = [];
+      var show = q.get('debug') === '1';
+      function flush() {
+        var el = document.getElementById('debug');
+        if (!el) return;
+        el.textContent = lines.join('\n');
+        el.hidden = !show || lines.length === 0;
+      }
+      function push(msg) {
+        lines.push(new Date().toISOString().slice(11, 23) + '  ' + msg);
+        if (lines.length > 200) lines.shift();
+        flush();
+      }
+      window.addEventListener('error', function (e) {
+        push('error: ' + (e.message || e.type) + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''));
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e.reason;
+        push('unhandled rejection: ' + (r && r.stack ? r.stack.split('\n').slice(0, 3).join(' | ') : String(r)));
+      });
+      var orig = console.error;
+      console.error = function () {
+        try {
+          push('console.error: ' + Array.prototype.map.call(arguments, function (a) {
+            return a && a.message ? a.message : typeof a === 'string' ? a : JSON.stringify(a);
+          }).join(' '));
+        } catch (e) { /* never break the page for its log */ }
+        return orig.apply(console, arguments);
+      };
+      window.__hudDebug = { push: push, lines: lines };
+      document.addEventListener('DOMContentLoaded', flush);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+    {"imports": {"three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/"}}
+  </script>
+  <script type="module" src="src/app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <a class="brand" href="./" title="Motion-based agentic control">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="wordmark">Motion-based agentic control</span>
+      </a>
+      <span class="ep mono" id="ep-meta"></span>
+      <span class="spacer"></span>
+      <span class="mode-badge mono" id="mode-badge">—</span>
+      <label class="picker" id="picker" hidden>
+        <span class="sr-only">Episode</span>
+        <select id="episode-select" aria-label="Episode"></select>
+      </label>
+      <details class="connect" id="connect">
+        <summary>Connect</summary>
+        <form class="pop" id="connect-form">
+          <label for="ws-url">Connect to a running sim</label>
+          <div class="row">
+            <input id="ws-url" class="mono" type="text" spellcheck="false" autocomplete="off" value="ws://127.0.0.1:8766/ws">
+            <button type="submit">Connect</button>
+          </div>
+          <p class="hint">Start the simulator with <code>sprout-sim run --web</code>.</p>
+        </form>
+      </details>
+      <button class="icon-btn" id="theme-btn" type="button" aria-label="Toggle light and dark" title="Theme (t)">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 3.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"/></svg>
+      </button>
+    </header>
+
+    <main class="stage" id="stage">
+      <section class="viewport" id="viewport" aria-label="The simulated world">
+        <div class="vp-canvas" id="vp-canvas"></div>
+        <div class="vp-ui">
+          <div class="vp-tl">
+            <span class="vp-title">World</span><span class="vp-sub mono" id="vp-clock"></span>
+            <details class="vp-info" id="vp-info" hidden><summary class="mono">replay notes</summary><ul></ul></details>
+          </div>
+          <div class="cams" id="cams" hidden>
+            <button type="button" data-cam="default">default</button>
+            <button type="button" data-cam="front">front</button>
+            <button type="button" data-cam="side">side</button>
+            <button type="button" data-cam="top">top</button>
+            <button type="button" data-cam="frame" title="Frame the scene (f)">frame</button>
+          </div>
+          <div class="vp-hint" id="vp-hint" hidden></div>
+        </div>
+        <div class="vp-note" id="vp-note" hidden><p></p></div>
+        <div class="empty" id="empty" hidden>
+          <div class="empty-card">
+            <h2>No episode loaded</h2>
+            <p>This page shows the motion-based agentic control pipeline at work: the LLM plans, JEV decides and edits each
+              motion to the scene, the engine runs and watches it, and the motion memory grows with every success.</p>
+            <h3>Replay a recorded run</h3>
+            <p>Export a run folder into a bundle and reload:<br><code>tools/web/export_episode.py &lt;run dir&gt; --out web/episodes/&lt;id&gt;</code></p>
+            <h3>Watch a run live</h3>
+            <p>Start the simulator with <code>sprout-sim run --web</code>, then connect:</p>
+            <form class="row" id="empty-connect">
+              <input class="mono" type="text" spellcheck="false" autocomplete="off" value="ws://127.0.0.1:8766/ws" aria-label="WebSocket URL">
+              <button type="submit">Connect</button>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section class="panel" id="panel" aria-label="The pipeline"></section>
+      <section class="memory" id="memory" aria-label="Motion memory"></section>
+    </main>
+
+    <footer class="bar" id="bar" aria-label="Time and events"></footer>
+  </div>
+  <pre id="debug" hidden></pre>
+</body>
+</html>

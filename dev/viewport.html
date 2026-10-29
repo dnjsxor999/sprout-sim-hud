@@ -1,0 +1,202 @@
+<!doctype html>
+<!--
+  Manual check of the viewport alone (web/src/viewport/), not the product page. Serve web/ and open
+  dev/viewport.html?model=<url of an .mjb>. Optional: scene=<url of a scene dict JSON> (default: derived from the model),
+  theme=light, preset=front|side|top, interactive=0, demo=hand|base|turn (a synthetic plan), phase=<0..1> or phase=auto,
+  echo=0 (do not answer drops with a frame). window.vp is the viewport; window.__vp holds {ready, errors, events}.
+
+  Headless capture: software WebGL needs --enable-unsafe-swiftshader, and the model loads after the load event, so let
+  virtual time run and composite before the shot:
+    google-chrome --headless=new --disable-gpu --enable-unsafe-swiftshader --virtual-time-budget=20000 \
+      --run-all-compositor-stages-before-draw --window-size=1400,900 --screenshot=out.png \
+      'http://127.0.0.1:8790/dev/viewport.html?model=<model>.mjb'
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Viewport check</title>
+  <script type="importmap">{"imports": {"three": "../vendor/three/three.module.js", "three/addons/": "../vendor/three/addons/"}}</script>
+  <style>
+    :root { color-scheme: dark; --bg: #0b0d10; --panel: #13161b; --line: rgba(255, 255, 255, .08); --text: #e7e9ee; --muted: #9aa3b2; }
+    :root[data-theme="light"] { color-scheme: light; --bg: #f6f7f9; --panel: #ffffff; --line: rgba(0, 0, 0, .08); --text: #1b1f24; --muted: #5f6877; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #vp { position: fixed; inset: 0; }
+    .bar { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+    .bar > * { pointer-events: auto; }
+    button, label { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+      padding: 4px 8px; font: inherit; cursor: pointer; }
+    label { display: inline-flex; gap: 6px; align-items: center; }
+    #status { position: fixed; right: 12px; bottom: 12px; color: var(--muted); text-align: right; max-width: 60vw; }
+    #log { position: fixed; left: 12px; bottom: 12px; margin: 0; max-height: 28vh; max-width: calc(100vw - 24px); overflow: auto;
+      color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+    #log:empty { display: none; }
+  </style>
+</head>
+<body>
+  <div id="vp"></div>
+  <div class="bar">
+    <button data-preset="default">default</button>
+    <button data-preset="front">front</button>
+    <button data-preset="side">side</button>
+    <button data-preset="top">top</button>
+    <button id="frame">frame</button>
+    <button id="theme">theme</button>
+    <label><input type="checkbox" id="interactive"> interactive</label>
+    <button id="demo-hand">hand plan</button>
+    <button id="demo-reedit">re-edit</button>
+    <button id="demo-base">base plan</button>
+    <button id="demo-turn">turn plan</button>
+    <button id="demo-clear">clear plan</button>
+    <button id="highlight">highlight</button>
+    <label>phase <input type="range" id="phase" min="0" max="1" step="0.01" value="0"></label>
+  </div>
+  <pre id="log"></pre>
+  <div id="status">loading…</div>
+  <script type="module">
+    import { createViewport } from '../src/viewport/viewport.js';
+
+    const params = new URLSearchParams(location.search);
+    const $ = (id) => document.getElementById(id);
+    const state = { ready: false, errors: [], events: [] };
+    window.__vp = state;
+    const log = (line) => {
+      state.events.push(line);
+      $('log').textContent = state.events.slice(-12).reverse().join('\n');
+    };
+    const fail = (msg) => {
+      state.errors.push(msg);
+      $('status').textContent = `error: ${msg}`;
+      console.error(msg);
+    };
+    window.addEventListener('error', (e) => fail(String(e.message)));
+    window.addEventListener('unhandledrejection', (e) => fail(String(e.reason && e.reason.message ? e.reason.message : e.reason)));
+
+    let theme = params.get('theme') === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    const container = $('vp');
+    const interactive = params.get('interactive') !== '0';
+    const vp = await createViewport(container, { theme, interactive });
+    window.vp = vp;
+    $('interactive').checked = interactive;
+    container.addEventListener('viewport-hint', (e) => log(`hint: ${e.detail}`));
+
+    let scene = null;
+    let reedits = 0;
+    // Without a simulator nothing confirms a drop, and the viewport rightly lets the object go back to the last
+    // streamed pose. echo (default on, echo=0 turns it off) answers a drop like the bridge would: a frame with the
+    // object at the drop point, a moment later.
+    const echo = params.get('echo') !== '0';
+    vp.onDragObject(({ name, pos, live }) => {
+      log(`${live ? 'drag' : 'drop'} ${name} [${pos.map((v) => v.toFixed(3)).join(', ')}]`);
+      const obj = scene && scene.objects.find((o) => o.name === name);
+      if (live || !echo || !obj || !vp.mirror) return;
+      const frame = Float64Array.from(vp.mirror.qpos);
+      frame[obj.qpos_adr] = pos[0];
+      frame[obj.qpos_adr + 1] = pos[1];
+      setTimeout(() => log(`echo ${name}: ${vp.setState(frame) ? 'frame drawn' : 'frame refused'}`), 120);
+    });
+
+    /** A synthetic hand plan: the clip as placed ends beside the object, the edit ends at it; re-edits shift the goal
+     * as if the object had been moved, so the morph from the previous edit shows. */
+    function demoHand(reedit) {
+      const obj = scene && scene.objects[0];
+      const at = (obj && vp.bodyPosition(obj.name)) || [0.3, 0, 0.65];
+      const hand = vp.bodyPosition('right_grippertip_link') || [0.2, -0.25, 0.8];
+      reedits = reedit ? reedits + 1 : 0;
+      const shift = [0.05 * Math.sin(reedits), 0.06 * reedits % 0.18, 0];
+      const goal = [at[0] + shift[0], at[1] + shift[1], at[2] + 0.03];
+      const ghostEnd = [goal[0] - 0.03, goal[1] - 0.15, goal[2] + 0.07];
+      const curve = (end) => Array.from({ length: 32 }, (_, i) => {
+        const u = i / 31;
+        const arc = Math.sin(Math.PI * u) * 0.09;
+        return [hand[0] + (end[0] - hand[0]) * u, hand[1] + (end[1] - hand[1]) * u, hand[2] + (end[2] - hand[2]) * u + arc];
+      });
+      const edited = curve(goal);
+      vp.setPlan({
+        kind: 'research/jev_trace', trace_kind: 'plan', channel: 'hand', motion: 'reach_side_right', arm: 'right',
+        object_ref: obj ? obj.name : null, entry_s: 0, grasp_s: 3.2, duration_s: 4, D: 0.1, goal,
+        ghost: curve(ghostEnd), edited, path: Array.from({ length: 64 }, (_, i) => edited[Math.round((i * 31) / 63)]),
+        points: [0, 9, 20, 31].map((i) => edited[i]), roles: ['start', 'approach', 'pregrasp', 'grasp'], reedit: !!reedit,
+        t_wall: Date.now() / 1000,
+      });
+      log(`plan: hand ${reedit ? 're-edit' : 'new'}`);
+    }
+
+    function demoBase(turn) {
+      const base = vp.bodyPosition('torso_link') || [0, 0, 0];
+      vp.setPlan({
+        kind: 'research/jev_trace', trace_kind: 'plan', channel: 'base', motion: turn ? 'turn_left' : 'strafe_left',
+        start: [base[0], base[1], 0], goal: turn ? [0, 0, 1.2] : [0.05, 0.35, 0], duration_s: 3, t_wall: Date.now() / 1000,
+      });
+      log(`plan: base ${turn ? 'turn' : 'strafe'}`);
+    }
+
+    function setPhase(v) {
+      $('phase').value = String(v);
+      vp.setProgress(v);
+    }
+
+    document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => vp.cameraPreset(b.dataset.preset)));
+    $('frame').addEventListener('click', () => vp.frameScene());
+    $('theme').addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = theme;
+      vp.setTheme(theme);
+    });
+    $('interactive').addEventListener('change', (e) => vp.setInteractive(e.target.checked));
+    $('demo-hand').addEventListener('click', () => demoHand(false));
+    $('demo-reedit').addEventListener('click', () => demoHand(true));
+    $('demo-base').addEventListener('click', () => demoBase(false));
+    $('demo-turn').addEventListener('click', () => demoBase(true));
+    $('demo-clear').addEventListener('click', () => vp.setPlan(null));
+    $('highlight').addEventListener('click', () => {
+      const name = scene && scene.objects[0] ? scene.objects[0].name : null;
+      vp.highlightObject(vp.highlighted ? null : name);
+    });
+    $('phase').addEventListener('input', (e) => vp.setProgress(Number(e.target.value)));
+
+    const modelUrl = params.get('model');
+    if (!modelUrl) {
+      $('status').textContent = 'add ?model=<url of an .mjb> to the address';
+    } else {
+      try {
+        const t0 = performance.now();
+        const res = await fetch(modelUrl);
+        if (!res.ok) throw new Error(`${modelUrl}: HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        const info = await vp.loadModel(buf);
+        scene = info.derivedScene;
+        if (params.get('scene')) {
+          const sres = await fetch(params.get('scene'));
+          if (!sres.ok) throw new Error(`${params.get('scene')}: HTTP ${sres.status}`);
+          scene = await sres.json();
+        }
+        vp.applyScene(scene);
+        if (params.get('preset')) vp.cameraPreset(params.get('preset'), { instant: true });
+        const demo = params.get('demo');
+        if (demo === 'hand') demoHand(false);
+        else if (demo === 'base') demoBase(false);
+        else if (demo === 'turn') demoBase(true);
+        const phase = params.get('phase');
+        if (phase === 'auto') {
+          const start = performance.now();
+          const loop = (now) => {
+            setPhase(((now - start) / 4000) % 1);
+            requestAnimationFrame(loop);
+          };
+          requestAnimationFrame(loop);
+        } else if (phase !== null) {
+          setPhase(Number(phase));
+        }
+        $('status').textContent = `nq ${info.nq} · ngeom ${info.ngeom} · nbody ${info.nbody} · nmesh ${info.nmesh} · `
+          + `${(buf.byteLength / 1e6).toFixed(1)} MB · ${Math.round(performance.now() - t0)} ms · ${scene.derived ? 'derived scene' : 'scene dict'}`;
+        state.ready = true;
+      } catch (err) {
+        fail(err && err.message ? err.message : String(err));
+      }
+    }
+  </script>
+</body>
+</html>
