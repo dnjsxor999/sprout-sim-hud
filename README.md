@@ -27,6 +27,16 @@ the record formats are described in [docs/design/WEB_HUD.md](../docs/design/WEB_
   the scene changed, and the outcome. The watch belongs to JEV: while a motion runs, JEV's block shows that it watches
   every tick (`watching every tick · check 7 · p 0.02 · carry on`), and its steps list keeps the chain of decisions,
   re-decisions, edits and refusals of the current command, revealed one step at a time so a burst can be followed.
+* **Re-edits and the watch.** A follow of a moved object is a step (`object moved 3.9 cm → re-edited at phase 0.25`)
+  and a teal diamond on the phase bar. A changed decision spliced into the running motion is a step of its own (`watch
+  changed the decision → spliced in 0.59 s · elevation 30° → 45° · yaw 0° → 15°`; `LLM changed the decision` for a
+  `jev_modify`) and a ring on the phase bar, and the decision card takes its values; the header counts `re-edited ×N`
+  (follows) and `spliced ×N` apart. The watch line gives each check's verdict: `decision stands`, `→ spliced in 0.59 s`,
+  `change refused (out of reach)`, `budget spent`, `held`, `not applied (the grasp had begun)`. When the engine asks the
+  decider itself, the arm may stand until the answer lands: the engine reads `held · asking the decider (object
+  moved)`, the watch `resting`, and the step then reads `re-decided in 2.4 s · held 2.8 s → re-edited` (or `→ paused`,
+  `→ the decision stands`). A pause names its cause (`Paused: object moved · the LLM decides`), and a hand run's outcome
+  ends with its counts (`· 7 re-edits (6 follow · 1 decision) · watch 4 checks, 1 change`).
 * The **connectors** carry the messages: a dot travels from the sender to the receiver (intent, menu, the chosen
   motion, the edited motion, success / fail / scene changed, candidates, "kept as ...").
 
@@ -62,7 +72,9 @@ Start the simulator with the web bridge, `sprout-sim run --web` (plus the usual 
 finds the bridge's `/api/scene` on its own origin), and streams the run over `ws://127.0.0.1:8766/ws`. A copy of the
 page served elsewhere (the GitHub Pages site, `npm run serve`) connects with **Connect** in the header or
 `?ws=ws://127.0.0.1:8766/ws`. In a live run you can drag an object on the table: the
-simulator moves it, and the page shows how the engine's watch and the LLM react.
+simulator moves it, and the page shows how the engine's watch and the LLM react. The engine records its own question
+to the decider only when the answer lands, so a live run shows the landed re-decision but not the hold before it (a
+replay shows both).
 
 ## URL parameters
 
@@ -83,7 +95,8 @@ Keyboard: <kbd>space</kbd> play / pause, <kbd>←</kbd> <kbd>→</kbd> seek 5 s,
 ## Tests and captures
 
 ```bash
-npm test        # the reducer over a recorded episode (tests/fixtures): menu, choice, decision, plan, memory, outcome
+npm test        # the reducer over a recorded episode (tests/fixtures): menu, choice, decision, plan, memory, outcome;
+                # re-edits, splices, the watch's verdicts and holds (paper_sweep_4 bundles are checked when present)
 ```
 
 A headless capture of a given moment:

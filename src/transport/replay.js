@@ -5,10 +5,12 @@
 // clock when the bundle says how (`frames.hz` and `frames.t_rel0`: frame i is at `t_rel0 + i / hz`); otherwise the
 // player maps its wall clock to sim time through the rows' own (t_wall, t) pairs and finds the frames by their sim
 // time. Either way `qpos` is interpolated linearly between frames. Seeking hands the rows up to the target to the app, which rebuilds the HUD state by
-// reducing them from scratch (the reducer is pure, so a seek and a straight play end in the same state).
+// reducing them from scratch (the reducer is pure, so a seek and a straight play end in the same state). The player adds
+// one kind of row the recording does not hold: a `hold` at the start of each span in which the playhead waited for the
+// decider (the engine writes that span only when the answer lands; `holdRows`), so a replay shows the arm standing.
 
 import { isObj, num, clamp } from '../util/format.js';
-import { rowActor, learnedIds } from '../model/pipeline.js';
+import { rowActor, learnedIds, holdRows } from '../model/pipeline.js';
 
 // half speed lets a burst of JEV's decisions be followed; the faster ones skim the waiting
 export const SPEEDS = [0.5, 1, 2, 4];
@@ -115,10 +117,10 @@ function upperBound(sorted, x) {
  */
 export function createPlayer(bundle, handlers = {}) {
   const meta = bundle.meta || {};
-  // rows in wall order; a row without a wall stamp keeps its place after the row before it
+  // rows in wall order, the holds among them; a row without a wall stamp keeps its place after the row before it
   const rows = [];
   let lastWall = null;
-  bundle.rows.forEach((r, i) => {
+  [...bundle.rows, ...holdRows(bundle.rows)].forEach((r, i) => {
     const tw = num(r.t_wall);
     if (tw != null) lastWall = tw;
     rows.push({ r, i, tw: tw ?? lastWall ?? 0 });

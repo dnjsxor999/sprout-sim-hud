@@ -6,11 +6,11 @@
 // card and the refusal pill follow the step being revealed, so the card never flips faster than the eye (section 11.2).
 
 import { h, s, setText, setAttr, setClass, setStyle, setHidden, replay } from '../util/dom.js';
-import { short, num, clamp, fmtP, bindingsText, decisionFields, decisionConfidence } from '../util/format.js';
+import { short, num, clamp, isObj, fmtP, bindingsText, decisionFields, decisionConfidence } from '../util/format.js';
 import { actorVar } from '../util/colors.js';
 import { PULSE_MS, PULSE_LINGER_MS, MORPH_MS, JEV_DWELL_MS, easeInOutCubic, easeOutCubic, prefersReducedMotion, lerp }
   from '../util/easing.js';
-import { menuSummary } from '../model/pipeline.js';
+import { menuSummary, changeWords, withVerdict } from '../model/pipeline.js';
 
 const PULSE_FRESH_S = 3;       // pulses older than this at the playback clock (after a seek) are not animated
 const PULSES_LIVE_MAX = 8;     // pulses animating at once (a fast-forward does not flood the wires)
@@ -225,15 +225,113 @@ function jevTag(st, pv) {
   return handedRun(st) ? 'idle' : j.menu ? 'menu ready' : 'idle';
 }
 
-function engineStatus(st) {
+/** Why the engine paused without a re-decision, when its diagnostics say so: "not asked: the grasp stage had begun" ->
+ * "no re-decision (the grasp had begun)", "no answer" -> "the decider gave no answer". */
+function deciderWords(v) {
+  if (typeof v !== 'string' || !v.trim()) return '';
+  if (v === 'no answer') return 'the decider gave no answer';
+  const m = /^not asked:?\s*(.*)$/.exec(v);
+  if (m) return `no re-decision (${(m[1] || 'not asked').replace('the grasp stage had begun', 'the grasp had begun')})`;
+  return `decider: ${v}`;
+}
+
+/** A hand run's counts as the end of its outcome line: " · 7 re-edits (6 follow · 1 decision) · watch 4 checks, 1
+ * change · asked the decider 2×, held 3.2 s". A part whose counts are all zero is left out; '' without counts (a
+ * recording made before the run ends carried them). The watch's checks are its passes (the verdicts that left the
+ * decision standing), its changes the changed decisions it took up. */
+export function runCountsText(c) {
+  if (!isObj(c)) return '';
+  const parts = [];
+  const n = num(c.n_reedits, 0);
+  if (n > 0) {
+    const kinds = [['n_reedits_follow', 'follow'], ['n_reedits_body', 'body'], ['n_reedits_off_goal', 'off goal'],
+      ['n_reedits_decision', 'decision']].filter(([k]) => num(c[k], 0) > 0).map(([k, w]) => `${num(c[k])} ${w}`);
+    parts.push(`${n} re-edit${n === 1 ? '' : 's'}${kinds.length ? ` (${kinds.join(' · ')})` : ''}`);
+  }
+  const passes = num(c.n_watch_passes, 0);
+  const changes = num(c.n_watch_changes, 0);
+  if (passes > 0 || changes > 0) parts.push(`watch ${passes} check${passes === 1 ? '' : 's'}, ${changes} change${changes === 1 ? '' : 's'}`);
+  const asked = num(c.n_redecisions_async, 0);
+  if (asked > 0) parts.push(`asked the decider ${asked}×, held ${num(c.held_total_s, 0).toFixed(1)} s`);
+  return parts.map((p) => ` · ${p}`).join('');
+}
+
+/** The engine's status line. A pause names its cause and who decides now ("Paused: object moved · the LLM decides");
+ * after a hand run the outcome carries the run's counts. */
+export function engineStatus(st) {
   const e = st.engine;
   const r = e.run;
   if (e.mode_change && e.mode_change.status === 'started') return `Switching the robot to ${e.mode_change.to}`;
   if (!r) return 'Idle';
-  if (r.paused) return 'Paused: the scene changed (JEV is deciding)';
+  if (r.paused) {
+    const p = r.pause || {};
+    const why = deciderWords(p.decider);
+    return `Paused: ${changeWords(p.change)}${why ? ` · ${why}` : ''} · the LLM decides`;
+  }
   if (!r.ended && r.outcome == null) return `Running ${r.motion}`;
-  if (r.outcome === 'success') return `${r.motion} succeeded${num(r.run_s) != null ? ` in ${num(r.run_s).toFixed(1)} s` : ''}`;
-  return `${r.motion} failed${r.reason ? `: ${r.reason}` : ''}`;
+  const counts = r.channel === 'hand' ? runCountsText(r.counts) : '';
+  if (r.outcome === 'success') return `${r.motion} succeeded${num(r.run_s) != null ? ` in ${num(r.run_s).toFixed(1)} s` : ''}${counts}`;
+  return `${r.motion} failed${r.reason ? `: ${r.reason}` : ''}${counts}`;
+}
+
+/** The engine block's tag: idle, paused, running or the outcome; while the playhead holds for the engine's own
+ * re-decision, "held · asking the decider (object moved)" (the phase bar stands still meanwhile). */
+export function engineTag(st) {
+  const r = st.engine.run;
+  if (!r) return 'idle';
+  if (r.paused) return 'paused';
+  const running = !r.ended && r.outcome == null;
+  if (running && r.held) return `held · asking the decider${r.held.why ? ` (${r.held.why})` : ''}`;
+  return running ? 'running' : r.outcome ?? 'ended';
+}
+
+/**
+ * The watch line of the current command's motion: `{text, live, intervene, w, title}`, or null when no run of the
+ * command is there. While the motion runs: the latest check, its p and its verdict ("watching every tick · check 5 · p
+ * 0.61 · decision stands", "… p 0.61 → spliced in 0.59 s"); while the playhead holds for the decider the watch rests;
+ * after the run the run's count of checks and interventions.
+ */
+export function watchLine(st) {
+  const j = st.jev;
+  const run = st.engine.run;
+  const live = !!run && !run.ended && run.outcome == null;
+  const current = !!run && (live || j.steps_cmd_t_wall == null || num(run.t_wall_start, -Infinity) >= j.steps_cmd_t_wall);
+  if (!current) return null;
+  // the latest check, when it judged this run (a check counts on the run it judged)
+  const w = run.n_watch > 0 && j.watch && j.watch.motion === run.motion ? j.watch : null;
+  const n = run.n_watch;
+  const resting = live && !!run.held;
+  let text;
+  if (resting) text = 'resting';
+  else if (live && w) text = withVerdict(`watching every tick · check ${w.n} · p ${fmtP(w.p)}`, w.verdict);
+  else if (live) text = 'watching every tick · no decider check yet';
+  else if (n > 0) text = `watched ${n} check${n === 1 ? '' : 's'} · ${run.n_intervene ? `intervened ${run.n_intervene}×` : 'never intervened'}`;
+  else text = 'watched every tick · no decider check';
+  const title = resting ? `the watch rests while the playhead holds for the decider (${run.held.why ?? 'a scene change'})`
+    : w && w.why ? `the decider's latest check: ${w.why}`
+      : 'JEV follows the running motion at every tick and asks the decider at periodic checks whether its decision still stands';
+  return { text, live: live && !resting, intervene: live ? !resting && !!(w && w.intervene) : run.n_intervene > 0, w, title };
+}
+
+/** The badges in JEV's header: re-decisions of the current command, the follows of a moved object, the changed
+ * decisions spliced into the running motion, and the mid-run runs of older recordings. `[[label, value, title]]`. */
+export function jevBadges(st) {
+  const j = st.jev;
+  const items = [];
+  if (j.n_redecisions > 0) items.push(['re-decided', `×${j.n_redecisions}`, `JEV re-decided ${j.n_redecisions}×${j.decision && j.decision.change && j.decision.change.kind ? ` after a predicted ${j.decision.change.kind}` : ''}`]);
+  if (j.reedits > 0) items.push(['re-edited', `×${j.reedits}`, `JEV re-edited the motion to the moved object ${j.reedits}×`]);
+  if (j.splices > 0) items.push(['spliced', `×${j.splices}`, `a changed decision was spliced into the running motion ${j.splices}×`]);
+  if (j.chain > 1) items.push(['run', String(j.chain), `run ${j.chain} of the command`]);
+  return items;
+}
+
+/** The card fields a spliced decision changed (the change record's dimensions whose values differ), or null for any
+ * other decision, whose changed fields are found against the decision the card showed before. */
+export function spliceChanged(d) {
+  if (!d || d.kind !== 'splice' || !isObj(d.change)) return null;
+  const from = isObj(d.change.from) ? d.change.from : {};
+  const to = isObj(d.change.to) ? d.change.to : {};
+  return new Set(Object.keys(to).filter((k) => JSON.stringify(from[k]) !== JSON.stringify(to[k])));
 }
 
 /** The decision card's fields: at most one row of seven, keeping the ones a reader follows when a record has more. */
@@ -549,7 +647,8 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     const folded = pv.shown.slice(0, pv.shown.length - vis.length);
     const earlier = folded.length + Math.max(0, j.steps_total - j.steps.length);
     setHidden(box, !vis.length);
-    const key = `${j.steps_cmd_t_wall}|${vis.map((x) => x.id).join(',')}|${earlier}`;
+    // a step's text can grow after it appeared (a landed re-decision gets its outcome): the texts are part of the key
+    const key = `${j.steps_cmd_t_wall}|${vis.map((x) => `${x.id}:${x.text}`).join('\n')}|${earlier}`;
     if (key === view.stepsKey) return;
     view.stepsKey = key;
     const rows = new Map([...box.querySelectorAll('li.step')].map((li) => [Number(li.dataset.id), li]));
@@ -564,7 +663,12 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     setText(more, earlier > 0 ? `+${earlier} earlier` : '');
     setAttr(more, 'title', folded.length ? folded.map((x) => x.text).join('\n') : null);
     for (const x of vis) {
-      if (rows.has(x.id)) continue;
+      if (rows.has(x.id)) {
+        const tx = el(rows.get(x.id), '.tx');
+        setText(tx, x.text);
+        setAttr(tx, 'title', x.text);
+        continue;
+      }
       const rel = x.t_wall != null && j.steps_cmd_t_wall != null ? Math.max(0, x.t_wall - j.steps_cmd_t_wall) : null;
       const li = h('li', { class: 'step', 'data-id': String(x.id), 'data-kind': x.kind },
         h('i', { class: 'sd', 'aria-hidden': 'true' }),
@@ -610,12 +714,14 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
       setText(el(card, '.reason'), '');
       setAttr(el(card, '.reason'), 'title', null);
       setClass(card, 'redecided', false);
+      setClass(card, 'spliced', false);
     }
     renderEdit(card, plan, st);
   }
 
   /** Fill the card with a decision. The fields keep their places when the next decision has the same ones; a value
-   * that differs from the decision the card showed before glows amber for a moment. */
+   * that differs from the decision the card showed before glows amber for a moment (for a spliced decision: the values
+   * its change record names). */
   function fillCard(card, d) {
     const title = `${d.motion ?? ''}${d.object_ref ? ` · ${d.object_ref}` : ''}`;
     setText(el(card, '.card-title'), title);
@@ -623,6 +729,8 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     const conf = decisionConfidence(d.decision);
     setText(el(card, '.card-meta'), `decider: ${d.decider === 'model' ? 'model' : 'rules'}${conf != null ? ` · conf ${conf.toFixed(2)}` : ''}`);
     setClass(card, 'redecided', d.kind === 'redecision');
+    setClass(card, 'spliced', d.kind === 'splice');
+    const spliced = spliceChanged(d);
     const fields = cardFields(d.decision);
     const before = view.cardPrev ? new Map(cardFields(view.cardPrev.decision).map((f) => [f.key, f.value])) : null;
     view.cardPrev = d;
@@ -643,7 +751,8 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
       setClass(fe, 'exempt', f.exempt);
       setAttr(fe, 'title', `${f.label}: ${f.value}${f.conf != null ? ` · confidence ${f.conf.toFixed(2)}` : ''}${f.exempt ? ' · a free choice' : ''}`);
       setStyle(el(fe, '.fb i'), 'width', `${Math.round(100 * clamp(f.conf ?? 0, 0, 1))}%`);
-      if (before && before.has(f.key) && before.get(f.key) !== f.value && !view.quiet) replay(fv, 'changed');
+      const changed = spliced ? spliced.has(f.key) : !!before && before.has(f.key) && before.get(f.key) !== f.value;
+      if (changed && !view.quiet) replay(fv, 'changed');
       else fv.classList.remove('changed');
     });
     const reason = d.decision && d.decision.reason ? String(d.decision.reason) : '';
@@ -728,44 +837,29 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
   /**
    * The watch line. JEV follows every tick of a running motion (tracking it, re-anchoring it, re-editing it when the
    * object moves) and asks the decider at periodic checks whether its decision still stands, so while a motion runs
-   * the line is always there, its bars ticking; the latest check gives the count, p and verdict. A check brightens the
-   * line for a moment, an intervention turns it amber (and is a step of its own). After the run the line keeps the
-   * run's verdict until the next command begins.
+   * the line is always there, its bars ticking; the latest check gives the count, p and verdict (`watchLine`). A check
+   * brightens the line for a moment, an intervention turns it amber (and is a step of its own). While the playhead holds
+   * for the decider the line rests. After the run the line keeps the run's verdict until the next command begins.
    */
   function renderWatch(st) {
-    const j = st.jev;
-    const run = st.engine.run;
     const row = el(jev, '.watch');
-    const live = !!run && !run.ended && run.outcome == null;
-    const current = !!run && (live || j.steps_cmd_t_wall == null || num(run.t_wall_start, -Infinity) >= j.steps_cmd_t_wall);
-    setHidden(row, !current);
-    if (!current) return;
-    // the latest check, when it judged this run (a check counts on the run it judged)
-    const w = run.n_watch > 0 && j.watch && j.watch.motion === run.motion ? j.watch : null;
-    const n = run.n_watch;
-    let text;
-    if (live && w) text = `watching every tick · check ${w.n} · p ${fmtP(w.p)} · ${w.verdict}`;
-    else if (live) text = 'watching every tick · no decider check yet';
-    else if (n > 0) text = `watched ${n} check${n === 1 ? '' : 's'} · ${run.n_intervene ? `intervened ${run.n_intervene}×` : 'never intervened'}`;
-    else text = 'watched every tick · no decider check';
-    setText(el(row, '.wt'), text);
-    setClass(row, 'live', live);
-    setClass(row, 'intervene', live ? !!(w && w.intervene) : run.n_intervene > 0);
-    setAttr(row, 'title', w && w.why ? `the decider's latest check: ${w.why}`
-      : 'JEV follows the running motion at every tick and asks the decider at periodic checks whether its decision still stands');
+    const line = watchLine(st);
+    setHidden(row, !line);
+    if (!line) return;
+    setText(el(row, '.wt'), line.text);
+    setClass(row, 'live', line.live);
+    setClass(row, 'intervene', line.intervene);
+    setAttr(row, 'title', line.title);
+    const w = line.w;
     if (w && w.t_wall !== view.watchKey) {
       view.watchKey = w.t_wall;
       if (!view.quiet) replay(row, 'blink');
     }
   }
 
-  /** Re-decisions, re-edits and mid-run runs of the current command, as small badges in the block's header. */
+  /** Re-decisions, follows, splices and mid-run runs, as small badges in the block's header (`jevBadges`). */
   function renderBadges(st) {
-    const j = st.jev;
-    const items = [];
-    if (j.n_redecisions > 0) items.push(['re-decided', `×${j.n_redecisions}`, `JEV re-decided ${j.n_redecisions}×${j.decision && j.decision.change && j.decision.change.kind ? ` after a predicted ${j.decision.change.kind}` : ''}`]);
-    if (j.reedits > 0) items.push(['re-edited', `×${j.reedits}`, `the engine's watch re-edited the motion ${j.reedits}×`]);
-    if (j.chain > 1) items.push(['run', String(j.chain), `run ${j.chain} of the command`]);
+    const items = jevBadges(st);
     const box = el(jev, '.hb');
     const key = items.map((x) => x.join('')).join('|');
     if (box.dataset.key !== key) {
@@ -781,8 +875,10 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     const running = !!r && !r.ended && r.outcome == null;
     setClass(eng, 'busy', running || (e.mode_change && e.mode_change.status === 'started'));
     setClass(eng, 'paused', !!r && r.paused);
-    setText(el(eng, '.tag'), !r ? 'idle' : r.paused ? 'paused' : running ? 'running' : r.outcome ?? 'ended');
-    setText(el(eng, '.st'), engineStatus(st));
+    setText(el(eng, '.tag'), engineTag(st));
+    const status = engineStatus(st);
+    setText(el(eng, '.st'), status);
+    setAttr(el(eng, '.st'), 'title', status);
     const box = el(eng, '.run');
     setHidden(box, !r);
     if (!r) return;
@@ -805,12 +901,14 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     const ph = clamp(num(r.phase, 0), 0, 1);
     setStyle(el(box, '.fill'), 'width', `${(100 * ph).toFixed(1)}%`);
     setText(el(box, '.pct'), `${Math.round(100 * ph)}%`);
-    const marksKey = `${r.t_wall_start}|${r.watch_marks.length}|${r.reedit_marks.length}`;
+    // the marks: the watch's checks (ticks), the follows (teal diamonds), the spliced decisions (rings, their step as title)
+    const marksKey = `${r.t_wall_start}|${r.watch_marks.length}|${r.reedit_marks.length}|${r.splice_marks.length}`;
     if (marksKey !== view.marksKey) {
       view.marksKey = marksKey;
       el(box, '.marks').replaceChildren(
         ...r.watch_marks.map((p) => h('i', { class: 'wm', style: { left: `${(100 * p).toFixed(2)}%` } })),
-        ...r.reedit_marks.map((p) => h('i', { class: 'rm', style: { left: `${(100 * p).toFixed(2)}%` } })));
+        ...r.reedit_marks.map((p) => h('i', { class: 'rm', style: { left: `${(100 * p).toFixed(2)}%` } })),
+        ...r.splice_marks.map((m) => h('i', { class: 'sm', title: m.text, style: { left: `${(100 * m.phase).toFixed(2)}%` } })));
     }
     const pause = el(box, '.pause');
     setHidden(pause, !r.paused);

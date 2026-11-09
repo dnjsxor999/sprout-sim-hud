@@ -6,8 +6,9 @@
 // and from `tick`), and O(1) per row apart from small bounded lists, because a replay seek re-reduces every row up to
 // the target time. Pseudo-rows let the transports hand over what is not a timeline record: `{kind: 'library', items}`
 // (the motion memory), `{kind: 'scene', scene, seed}` (the scene dict or name), `{kind: 'robot', mode, state}` (the
-// robot's control mode from the live state stream) and `{kind: 'viewer', text}` (the viewer's own action in a live run,
-// a dragged object, so the reaction that follows reads as one story).
+// robot's control mode from the live state stream), `{kind: 'viewer', text}` (the viewer's own action in a live run,
+// a dragged object, so the reaction that follows reads as one story) and `{kind: 'hold', motion, t, t_wall, why, phase}`
+// (a replay only: the playhead held while the engine asked the decider, see `holdRows`).
 
 import { num, isObj, clamp, short, decisionWords, decisionFields, decisionConfidence, bindingsText, fmtCm, fmtP }
   from '../util/format.js';
@@ -36,6 +37,15 @@ const GIST_PLACE = ['clearance_m', 'point', 'level', 'yaw_deg'];
 const STEP_LABEL = { elev: 'elevation', clear: 'clearance' };
 // why a decision was taken again, by the change record's kind
 const CHANGE_WORDS = { collision: 'collision predicted', modify: 'the LLM modified it', watch: 'the watch asked' };
+// a scene change in words, by the engine's change kind: a pause's cause, a hold's, a re-edit's (H1, 2026-11-09)
+const KIND_WORDS = { moved: 'object moved', shape: 'shape changed', body: 'body moved', off_goal: 'off goal',
+  pushed: 'object pushed', lost: 'object lost', stalled: 'hand stalled' };
+// the counts a hand run's end carries (the engine's records of 2026-11-09): the outcome line sums the run up with them
+const COUNT_KEYS = ['n_reedits', 'n_reedits_follow', 'n_reedits_body', 'n_reedits_off_goal', 'n_reedits_decision',
+  'n_watch_passes', 'n_watch_changes', 'splice_latency_max_s', 'n_redecisions_async', 'redecision_latency_max_s',
+  'held_total_s'];
+// the rows of one engine tick carry the same sim time: a re-edit or a pause this close to a landed re-decision is its outcome
+const SAME_TICK_S = 1e-3;
 
 /** The LLM phase a starting tool call puts the planner in (section 8.3, "Phase rules"). */
 export function phaseOfTool(tool) {
@@ -64,7 +74,11 @@ export function initialState() {
     },
     jev: {
       busy: null, query: null, menu: null, command: null, decision: null, n_redecisions: 0, refusal: null,
-      accepted: null, watch: null, reedits: 0, chain: 0, plan: null, plan_seq: 0,
+      accepted: null, watch: null, plan: null, plan_seq: 0,
+      // the running motion's re-edits: `reedits` counts the follows of a moved object, `splices` the changed decisions
+      // spliced in, `chain` the mid-run runs of older recordings; `landing` is the engine's own re-decision that just
+      // landed, whose outcome (re-edited, paused, the decision stands) comes with the rows of the same tick
+      reedits: 0, splices: 0, chain: 0, landing: null,
       // the current command's steps (section 11.2): `{id, t_wall, t, kind, text, tone, decision?, refusal?}`, the newest
       // last; `steps_total` counts the steps the command made (older ones fall off the list), `steps_cmd_t_wall` is
       // when the command started (the steps' time column counts from it)
@@ -96,6 +110,7 @@ function resetSteps(s, tw) {
   s.jev.steps = [];
   s.jev.steps_total = 0;
   s.jev.steps_cmd_t_wall = tw;
+  s.jev.landing = null;
 }
 
 /** One step of JEV's work on the current command (section 11.2). `tone`: null or 'ok' (teal), 'warn' (amber: a
@@ -238,6 +253,9 @@ function startRun(s, f, tw) {
     n_intervene: 0,   // the decider checks of this run that asked to intervene (the watch line's verdict after the run)
     watch_marks: [],
     reedit_marks: [],
+    splice_marks: [],   // the changed decisions spliced in: `{phase, text}` (a mark's tooltip is its step's text)
+    held: null,         // the playhead holds while the engine asks the decider (a replay's `hold` row): `{why, since}`
+    counts: null,       // the run end's counts (re-edits, the watch, the engine's own re-decisions) when it carries them
     accumulated: null,
     source: f.source ?? null,
   };
@@ -294,6 +312,12 @@ function menuText(menu) {
   const n = menu.candidates.length;
   const fit = menu.candidates.filter((c) => c.feasible).map((c) => c.motion);
   return `menu: ${fit.length} of ${n} fit${fit.length ? ` · ${fit.slice(0, 5).join(', ')}${fit.length > 5 ? ', …' : ''}` : ''}`;
+}
+
+/** A scene change's kind in words: "moved" -> "object moved", "off_goal" -> "off goal" (a pause's cause, a hold's). */
+export function changeWords(kind) {
+  if (kind == null || kind === '') return 'the scene changed';
+  return KIND_WORDS[kind] || String(kind).replace(/_/g, ' ');
 }
 
 /** A refusal reason in plain words: "out_of_reach" -> "out of reach", "collision_predicted" -> "collision". */
@@ -357,6 +381,40 @@ function decisionDiff(prev, next) {
     .join(' · ');
 }
 
+/** The dimensions a spliced decision changed, in the words of a re-decision's step: "elevation 30° → 45° · yaw 0° → 15°".
+ * The change record holds only the dimensions the engine compared, and values that came out equal are left out. A
+ * dimension the decision card does not show (the close policy, the waist) is named only when nothing the card shows
+ * changed, so the step never ends without its cause. */
+function changeDiff(change) {
+  const from = isObj(change.from) ? change.from : {};
+  const to = isObj(change.to) ? change.to : {};
+  const declared = (o) => ({ ...o, dimensions: Object.keys(o) });
+  const shown = decisionDiff(declared(from), declared(to));
+  if (shown) return shown;
+  const words = (v) => (v == null ? '–' : String(v).replace(/_/g, ' '));
+  return Object.keys(to).filter((k) => JSON.stringify(from[k]) !== JSON.stringify(to[k]))
+    .map((k) => `${k.replace(/_/g, ' ')} ${words(from[k])} → ${words(to[k])}`).join(' · ');
+}
+
+/** The step a spliced decision makes: who changed it, how soon it ran in the motion, what changed ("watch changed the
+ * decision → spliced in 0.59 s · elevation 30° → 45° · yaw 0° → 15°"; a jev_modify's reads "LLM changed the decision"). */
+function spliceText(r) {
+  const c = r.change;
+  const who = c.source === 'watch' ? 'watch' : c.source === 'modify' ? 'LLM' : null;
+  const lat = num(r.splice_latency_s);
+  const diff = changeDiff(c);
+  return `${who ? `${who} changed the decision` : 'the decision changed'} → spliced${lat != null ? ` in ${lat.toFixed(2)} s` : ''}`
+    + `${diff ? ` · ${diff}` : ''}`;
+}
+
+/** The step any other installed re-edit makes: a moved object's follow ("object moved 4.8 cm → re-edited at phase
+ * 0.31"), or a re-edit named by its change ("body moved → re-edited", "off goal → re-edited"). */
+function reeditText(r, kind) {
+  if (kind) return `${changeWords(kind)} → re-edited`;
+  const moved = num(r.object_moved_m);
+  return `${moved != null ? `object moved ${fmtCm(moved)} → ` : ''}re-edited at phase ${fmtP(r.phase)}`;
+}
+
 /** The first clause of a diagnostic sentence (before a parenthesis, a colon or a semicolon): the step names the cause,
  * the feed and the pill's title keep the whole advice. */
 function firstClause(text) {
@@ -382,6 +440,80 @@ function planText(r, anchor) {
   if (Math.abs(g[1] ?? 0) >= 0.005) moves.push(`dy ${g[1].toFixed(2)} m`);
   if (Math.abs(g[2] ?? 0) >= 0.0087) moves.push(`turn ${Math.round((g[2] * 180) / Math.PI)}°`);
   return `planned ${motion}${moves.length ? ` · ${moves.join(' · ')}` : ''} → handed to the engine`;
+}
+
+/** The landed re-decision a row of the same engine tick answers (the same motion, the same sim time), or null. */
+function landingOf(j, r) {
+  const L = j.landing;
+  const t = num(r.t);
+  if (!L || t == null || L.t == null || Math.abs(t - L.t) > SAME_TICK_S) return null;
+  return L.motion == null || r.motion == null || L.motion === r.motion ? L : null;
+}
+
+/** The landed re-decision's outcome, told by a row of its tick: "re-decided in 2.4 s · held 2.8 s → re-edited". */
+function settleLanding(s, L, outcome) {
+  const step = s.jev.steps.find((x) => x.id === L.id);
+  if (step) step.text = `${L.text} → ${outcome}`;
+  s.jev.landing = null;
+}
+
+/**
+ * The engine's own re-decision landed (asked in a job; its trace is written when the answer lands, nothing when it is
+ * asked). The step reads how long the decider took and how long the playhead held for it ("re-decided in 1.9 s · held
+ * 2.4 s", or "while the motion played on" when the plan went on); its outcome comes with the rows of the same tick (a
+ * re-edit, a pause) and is added to the step then. An answer that landed once the grasp had begun is not applied. A
+ * hold ends here: the playhead plays on from where it stood.
+ */
+function landingStep(s, r, d, tw, t) {
+  const j = s.jev;
+  const run = liveRun(s, r.motion);
+  if (run && run.held) {
+    run.held = null;
+    anchor(run, run.phase, t, tw);
+  }
+  const lat = num(r.redecision_latency_s);
+  const held = num(r.held_s, 0);
+  const text = `re-decided${lat != null ? ` in ${lat.toFixed(1)} s` : ''}`
+    + `${held > 0 ? ` · held ${held.toFixed(1)} s` : ' while the motion played on'}`;
+  if (r.dropped === 'late') {
+    addStep(s, 'redecision', `${text} → not applied (the grasp had begun)`, tw, t, 'warn');
+    j.landing = null;
+    return;
+  }
+  addStep(s, 'redecision', text, tw, t, 'warn', { decision: d });
+  j.landing = { id: s.step_seq, motion: r.motion ?? null, t, text };
+}
+
+/**
+ * A changed decision spliced into the running motion (the watch's or a jev_modify's, re-edited from the hand while the
+ * run goes on). It is a step of its own with a mark of its own on the phase bar, and the decision card takes its values
+ * (kind `splice`: the fields it changed glow).
+ */
+function spliceStep(s, r, run, tw, t) {
+  const j = s.jev;
+  const prev = j.decision;
+  const same = !!prev && prev.motion === r.motion;
+  const decision = trimDecision(r.decision);
+  const named = isObj(r.decision) && r.decision.decider ? (r.decision.decider === 'rules' ? 'rules' : 'model') : null;
+  const d = decision ? {
+    motion: r.motion ?? null, arm: same ? prev.arm : (run ? run.arm : null), object_ref: r.target ?? (same ? prev.object_ref : null),
+    decision, decider: named ?? (same ? prev.decider : 'rules'), context: r.change.source ?? null, kind: 'splice',
+    change: r.change, n_reachable: null, n_probed: null, insight: same ? prev.insight : null, t_wall: tw,
+  } : null;
+  if (d) j.decision = d;
+  j.splices += 1;
+  const text = spliceText(r);
+  if (run) {
+    run.splice_marks.push({ phase: clamp(num(r.phase, run.phase), 0, 1), text });
+    if (run.splice_marks.length > MARKS_MAX) run.splice_marks.shift();
+    anchor(run, r.entry_s ?? r.phase, t, tw);
+  }
+  pulse(s, 'jev', 'engine', 'spliced', tw);
+  const lat = num(r.splice_latency_s);
+  const diff = changeDiff(r.change);
+  feed(s, 'jev', `splices a changed decision into ${r.motion ?? ''} at phase ${fmtP(r.phase)} (${r.change.source ?? '?'}`
+    + `${lat != null ? `, ${lat.toFixed(2)} s` : ''})${diff ? ` · ${diff}` : ''}`, tw, t);
+  addStep(s, 'splice', text, tw, t, 'warn', d ? { decision: d } : null);
 }
 
 /** The refusal step: "refused · collision_predicted · the head is turned into the arm's way". */
@@ -482,13 +614,30 @@ function deciderOf(row) {
   return isObj(row.model) && num(row.model.requests, 0) > 0 ? 'model' : 'rules';
 }
 
-function watchVerdict(e) {
-  const why = typeof e.why === 'string' ? e.why : '';
-  const i = why.lastIndexOf(': ');
-  const tail = i >= 0 ? why.slice(i + 2).trim() : '';
-  if (tail && tail.length <= 40) return tail;
-  if (e.intervene) return e.applied ? 'intervened' : 'intervene';
-  return 'carry on';
+/**
+ * A watch check's verdict in words, from the entry's flags (never from the tail of its `why`, which is the decider's
+ * reasoning): "decision stands", "→ spliced in 0.59 s", "change refused (out of reach)", "budget spent" (the command's
+ * changed decisions are spent), "held" (it landed while the playhead held for the engine's own re-decision), "not
+ * applied (the grasp had begun)", "no answer" (the check failed), else "carry on" / "intervened".
+ */
+export function watchVerdict(e) {
+  if (!isObj(e)) return 'carry on';
+  if (e.error != null && num(e.p) == null) return 'no answer';
+  if (e.held) return 'held';
+  if (e.late) return `not applied (${typeof e.late === 'string' ? e.late : 'the grasp had begun'})`;
+  if (e.spliced) {
+    const lat = num(e.splice_latency_s);
+    return `→ spliced${lat != null ? ` in ${lat.toFixed(2)} s` : ''}`;
+  }
+  if (e.refused === 'chain_exhausted') return 'budget spent';
+  if (e.refused) return `change refused (${reasonWords(e.refused)})`;
+  if (e.stands || e.kept) return 'decision stands';
+  return e.intervene ? 'intervened' : 'carry on';
+}
+
+/** A line and its watch verdict: "check 5 · p 0.61 · decision stands", a splice without the dot ("p 0.61 → spliced"). */
+export function withVerdict(head, verdict) {
+  return String(verdict).startsWith('→') ? `${head} ${verdict}` : `${head} · ${verdict}`;
 }
 
 // ---- the row handlers ---------------------------------------------------------------------------------------------------
@@ -511,8 +660,8 @@ function onEpisodeStart(s, r, tw, t) {
   e.status_key = null;
   // a new episode: what the blocks show belongs to the old one; the memory (and what it learned) carries over
   Object.assign(s.jev, { busy: null, query: null, menu: null, command: null, decision: null, n_redecisions: 0,
-    refusal: null, accepted: null, watch: null, reedits: 0, chain: 0, plan: null, plan_seq: s.jev.plan_seq + 1,
-    steps: [], steps_total: 0, steps_cmd_t_wall: null });
+    refusal: null, accepted: null, watch: null, reedits: 0, splices: 0, chain: 0, landing: null, plan: null,
+    plan_seq: s.jev.plan_seq + 1, steps: [], steps_total: 0, steps_cmd_t_wall: null });
   s.engine.run = null;
   s.memory.active = null;
   s.memory.candidates = [];
@@ -812,10 +961,17 @@ function onJevEvent(s, r, tw, t) {
       const what = `${r.object ?? 'an object'}${disp != null ? ` moved ${fmtCm(disp)}` : ' moved'}`;
       if (r.paused && run) {
         run.paused = true;
+        run.held = null;
+        // `decider`: why the engine asked no decider before pausing ("not asked: the grasp stage had begun", "no answer")
         run.pause = { object: r.object ?? null, displacement_m: disp, change: r.change ?? null,
+          decider: typeof diag.decider === 'string' ? diag.decider : null,
           text: diag.reason ? short(diag.reason, 120) : what, t_wall: tw };
       }
-      if (r.paused) pulse(s, 'engine', 'llm', 'scene changed', tw);
+      if (r.paused) {
+        pulse(s, 'engine', 'llm', 'scene changed', tw);
+        const land = landingOf(j, r);
+        if (land) settleLanding(s, land, 'paused');
+      }
       feed(s, 'engine', `scene changed · ${what}${r.paused ? ' · paused for a decision' : ''}`, tw, t);
       return;
     }
@@ -854,16 +1010,25 @@ function onTrace(s, r, tw, t) {
         return;
       }
       const prev = j.decision;
-      j.decision = {
+      const d = {
         motion: r.motion ?? null, arm: r.arm ?? null, object_ref: r.object_ref ?? null, decision: trimDecision(r.decision),
         decider: deciderOf(r), context: r.context ?? null, kind: k, change: isObj(r.change) ? r.change : null,
         n_reachable: num(r.n_reachable), n_probed: num(r.n_probed), insight: r.insight ?? null, t_wall: tw,
       };
+      // the engine's own re-decision, asked in a job, lands with this trace; one that landed once the grasp had begun
+      // changed nothing, so the card keeps the decision in force
+      const landed = k === 'redecision' && r.async === true;
+      const late = landed && r.dropped === 'late';
+      if (!late) j.decision = d;
       if (k === 'redecision') j.n_redecisions += 1;
-      decisionStep(s, j.decision, prev, tw, t);
+      if (landed) landingStep(s, r, d, tw, t);
+      else decisionStep(s, d, prev, tw, t);
       const ch = isObj(r.change) && r.change.kind ? ` · after ${r.change.kind}` : '';
+      const lat = num(r.redecision_latency_s);
+      const job = landed ? ` · asked at phase ${fmtP(r.asked_phase)}${lat != null ? `, answered in ${lat.toFixed(1)} s` : ''}`
+        + `${num(r.held_s, 0) > 0 ? `, held ${num(r.held_s).toFixed(1)} s` : ''}${late ? ', not applied (the grasp had begun)' : ''}` : '';
       feed(s, 'jev', `${k === 'redecision' ? 're-decides' : 'decides'} ${r.motion ?? ''}${r.object_ref ? ` on ${r.object_ref}` : ''}: `
-        + `${decisionWords(r.decision) || '—'}${ch} · ${deciderOf(r)}`, tw, t);
+        + `${decisionWords(r.decision) || '—'}${ch} · ${deciderOf(r)}${job}`, tw, t);
       return;
     }
     case 'plan': {
@@ -902,30 +1067,40 @@ function onTrace(s, r, tw, t) {
       }
       j.watch = { motion: r.motion ?? null, p: num(e.p), intervene: !!e.intervene, applied: e.applied ?? null,
         why: e.why ?? null, verdict: watchVerdict(e), n, phase: num(e.phase), t_wall: tw };
-      feed(s, 'engine', `watch ${n} · p ${fmtP(e.p)} · ${j.watch.verdict}`, tw, t);
-      if (e.intervene) {
-        // only an intervention is a step: the checks that let the motion carry on blink on the watch line instead
-        const outcome = e.applied === false ? `intervention not applied${e.refused ? ` (${e.refused})` : ''}` : 'intervened';
-        addStep(s, 'watch', `watch · p ${fmtP(e.p)} → ${outcome}`, tw, t, 'warn');
+      feed(s, 'engine', withVerdict(`watch ${n} · p ${fmtP(e.p)}`, j.watch.verdict), tw, t);
+      if (e.intervene && !e.spliced) {
+        // only an intervention is a step (the checks that let the motion carry on blink on the watch line instead), and a
+        // spliced one is the splice's own step, which its re-edit made just before this entry
+        addStep(s, 'watch', `watch · p ${fmtP(e.p)} → ${j.watch.verdict}`, tw, t, 'warn');
       }
       return;
     }
     case 'reedit': {
       const run = liveRun(s, r.motion);
-      if (r.installed) {
-        j.reedits += 1;
-        if (run) {
-          pushMark(run.reedit_marks, r.phase);
-          anchor(run, r.entry_s ?? r.phase, t, tw);
-        }
-        pulse(s, 'jev', 'engine', 're-edited', tw);
-        const moved = num(r.object_moved_m);
-        feed(s, 'jev', `re-edits ${r.motion ?? ''} at phase ${fmtP(r.phase)}${moved != null ? ` · object moved ${fmtCm(moved)}` : ''}${r.new_decision ? ' · new decision' : ''}`, tw, t);
-        addStep(s, 'reedit', `${moved != null ? `object moved ${fmtCm(moved)} → ` : ''}re-edited at phase ${fmtP(r.phase)}`,
-          tw, t, 'warn');
-      } else {
-        feed(s, 'jev', `re-edit of ${r.motion ?? ''} refused: ${r.reason ?? '?'}`, tw, t);
+      const kind = isObj(r.change) && r.change.kind ? String(r.change.kind) : null;
+      if (!r.installed) {
+        feed(s, 'jev', `re-edit of ${r.motion ?? ''} refused: ${r.reason ?? '?'}${kind === 'decision' ? ' (a changed decision)' : ''}`, tw, t);
+        return;
       }
+      if (kind === 'decision') {
+        spliceStep(s, r, run, tw, t);
+        return;
+      }
+      // a moved object's follow carries no change kind and counts on the badge; a paused run's re-edit answers the pause
+      // (a jev_modify), and the body's and the close gate's re-edits are named by their change
+      if (!kind && !(run && run.paused)) j.reedits += 1;
+      if (run) {
+        pushMark(run.reedit_marks, r.phase);
+        anchor(run, r.entry_s ?? r.phase, t, tw);
+      }
+      pulse(s, 'jev', 'engine', 're-edited', tw);
+      const moved = num(r.object_moved_m);
+      const cause = kind ? ` · ${changeWords(kind)}` : moved != null ? ` · object moved ${fmtCm(moved)}` : '';
+      feed(s, 'jev', `re-edits ${r.motion ?? ''} at phase ${fmtP(r.phase)}${cause}${r.new_decision ? ' · new decision' : ''}`, tw, t);
+      // the re-edit a landed re-decision installed completes that step; any other re-edit is a step of its own
+      const land = landingOf(j, r);
+      if (land) settleLanding(s, land, r.new_decision === false ? 'the decision stands' : 're-edited');
+      else addStep(s, 'reedit', reeditText(r, kind), tw, t, 'warn');
       return;
     }
     case 'chain': {
@@ -962,8 +1137,11 @@ function onTrace(s, r, tw, t) {
       run.phase = num(r.phase, run.phase);
       run.ended = true;
       run.paused = false;
+      run.held = null;
       run.ended_t_wall = tw;
       run.run_s = num(r.duration_s);
+      run.counts = runCounts(r);
+      j.landing = null;
       s.memory.active = null;
       j.busy = null;
       if (run.channel === 'gaze') headMoved(s, tw);
@@ -987,6 +1165,25 @@ function onTrace(s, r, tw, t) {
     default:
       feed(s, 'jev', short(`${k} ${r.motion ?? ''}`, 120), tw, t);
   }
+}
+
+/** The counts a hand run's end carries (re-edits by kind, the watch's passes and changes, the engine's re-decisions in a
+ * job), or null for a recording made before the run ends carried them. */
+function runCounts(r) {
+  if (num(r.n_reedits_follow) == null && num(r.n_watch_passes) == null && num(r.n_redecisions_async) == null) return null;
+  const c = {};
+  for (const k of COUNT_KEYS) c[k] = num(r[k]);
+  return c;
+}
+
+/** The playhead holds while the engine asks the decider (a replay's pseudo-row, see `holdRows`): the phase bar stands
+ * and the watch rests until the answer lands. */
+function onHold(s, r, tw, t) {
+  const run = liveRun(s, r.motion);
+  if (!run) return;
+  run.held = { why: r.why ?? null, since: t };
+  if (num(r.phase) != null) anchor(run, r.phase, t, tw);
+  feed(s, 'engine', `holds ${run.motion ?? ''} at phase ${fmtP(run.phase)} · asks the decider${r.why ? ` (${r.why})` : ''}`, tw, t);
 }
 
 function onFault(s, r, tw, t) {
@@ -1089,6 +1286,7 @@ const HANDLERS = {
   'motor_control/fault': onFault,
   'scene/gate': onGate,
   'scene/object_motion': onObjectMotion,
+  hold: onHold,
   runner: (s, r, tw, t) => {
     if (r.what !== 'task') feed(s, 'run', short(String(r.what ?? ''), 120), tw, t);
   },
@@ -1137,7 +1335,8 @@ export function tick(s, clock = {}) {
     llm.thinking_total_s = llm.thinking_closed_s + llm.thinking_s;
   }
   const run = s.engine.run;
-  if (run && !run.ended && run.outcome == null && !run.paused && num(run.duration_s, 0) > 0) {
+  // a pause and a hold (the playhead waiting for the decider) keep the phase where it stands
+  if (run && !run.ended && run.outcome == null && !run.paused && !run.held && num(run.duration_s, 0) > 0) {
     let el = null;
     if (ts != null && run.anchor_t != null) el = ts - run.anchor_t;
     else if (tw != null && run.anchor_t_wall != null) el = tw - run.anchor_t_wall;
@@ -1167,6 +1366,46 @@ export function rowActor(row) {
     case 'scene/object_motion': return row.state === 'finished' ? 'world' : null;
     default: return null;
   }
+}
+
+/**
+ * The holds of a recording, as `hold` pseudo-rows a replay plays at their start. The engine asks the decider in a job
+ * and writes the `redecision` trace when the answer lands (`async`, `asked_t`, `asked_phase`, `held_s`, sim seconds the
+ * playhead held); nothing is written when it asks. Each landing with `held_s > 0` spans `[asked_t, asked_t + held_s]`,
+ * and its row is placed on the wall clock after the engine's own traces of the motion at `asked_t` (the tick that asked:
+ * a refused follow, say), else at `asked_t` through the rows' (t, t_wall) pairs, kept where the sim time does not go
+ * back (an event row and a tool call carry stamps of their own). A live run has no such row: it shows the landing only.
+ */
+export function holdRows(rows) {
+  const list = (rows || []).filter(isObj);
+  const pts = list.map((r) => [num(r.t_wall), num(r.t)]).filter(([tw, t]) => tw != null && t != null).sort((a, b) => a[0] - b[0]);
+  const pairs = [];
+  for (const [tw, t] of pts) if (!pairs.length || t >= pairs[pairs.length - 1][1]) pairs.push([tw, t]);
+  const wallAt = (t) => {
+    const i = pairs.findIndex((p) => p[1] >= t);
+    if (i < 0 || (i === 0 && pairs[0][1] > t)) return null;
+    if (pairs[i][1] === t) return pairs[i][0];
+    const [w0, t0] = pairs[i - 1];
+    const [w1, t1] = pairs[i];
+    return w0 + ((w1 - w0) * (t - t0)) / (t1 - t0);
+  };
+  const out = [];
+  for (const r of list) {
+    if (r.kind !== 'research/jev_trace' || r.trace_kind !== 'redecision' || r.async !== true) continue;
+    const held = num(r.held_s, 0);
+    const asked = num(r.asked_t);
+    const landed = num(r.t_wall);
+    if (!(held > 0) || asked == null || landed == null) continue;
+    const asking = list.filter((x) => x.kind === 'research/jev_trace' && x !== r && (x.motion ?? null) === (r.motion ?? null)
+      && num(x.t) != null && Math.abs(num(x.t) - asked) <= SAME_TICK_S && num(x.t_wall) != null && num(x.t_wall) <= landed)
+      .map((x) => num(x.t_wall));
+    // without a row of that tick or a pair around it the hold is placed by its own length before the landing
+    const tw = Math.min(landed, asking.length ? Math.max(...asking) : wallAt(asked) ?? landed - held);
+    const kind = isObj(r.change) ? r.change.kind : null;
+    out.push({ kind: 'hold', motion: r.motion ?? null, t: asked, t_wall: tw, why: changeWords(kind), phase: num(r.asked_phase),
+      held_s: held });
+  }
+  return out;
 }
 
 /** The ids a recording learned (run ends with `accumulated`): a replay hides them until their run end. */
