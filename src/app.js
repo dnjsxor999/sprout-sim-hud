@@ -339,7 +339,11 @@ function optionLabel(x) {
   const ps = paperScene(x);
   if (!ps) return `${x.title || x.id}${clock}`;
   const seed = Number.isFinite(Number(x.seed)) ? ` · seed ${x.seed}` : '';
-  return `${ps[1]} ${ps[2]}${seed}${clock}`;
+  // a bundle exported with its own title (not the exporter's "<scene>, seed <n>") keeps that title after the scene's name:
+  // the same scene and seed recorded on another layout ("one-room start, seed 9002")
+  const title = typeof x.title === 'string' ? x.title.trim() : '';
+  const own = title && !title.startsWith(`${x.scene}, seed`);
+  return own ? `${ps[1]} ${ps[2]} · ${title}${clock}` : `${ps[1]} ${ps[2]}${seed}${clock}`;
 }
 
 // Within a group: the paper's scenes in the paper's order, then by seed; other bundles after them in the index's order.

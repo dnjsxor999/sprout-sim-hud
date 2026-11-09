@@ -140,6 +140,16 @@
   "group": "paper_sweep_4"
  },
  {
+  "id": "paper_sweep_4/001_papers-b3_pressure_plate_s9002_claude_one_room",
+  "title": "one-room start, seed 9002",
+  "scene": "papers/b3_pressure_plate",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 1292.312,
+  "bytes": 43196899,
+  "group": "paper_sweep_4"
+ },
+ {
   "id": "paper_sweep_4/002_papers-a11_teleport_grasp_s9003_claude",
   "title": "papers/a11_teleport_grasp, seed 9003",
   "scene": "papers/a11_teleport_grasp",
