@@ -310,31 +310,85 @@ async function loadIndex() {
   }
 }
 
-// The picker: one option per bundle of episodes/index.json, in the index's order; bundles that sit in a group folder
-// (`"group": "basic_tasks"`, id `basic_tasks/<id>`) go under an <optgroup> headed by the folder's name.
+// The paper's demo scenes in the paper's own order (docs/design/PAPER_SCENES.md): the picker sorts a group's bundles by it
+// and labels them by the paper's code and name instead of the preset path. A scene not listed keeps the index's title.
+const PAPER_SCENES = [
+  ['papers/a11_teleport_grasp', 'A-1-1', 'Teleport grasp'],
+  ['papers/a12_moving_goal', 'A-1-2', 'Moving goal'],
+  ['papers/a21_moving_capture', 'A-2-1', 'Moving capture'],
+  ['papers/a22_slot_wall', 'A-2-2', 'Slot wall'],
+  ['papers/a22_pillar_reach', 'A-2-2', 'Pillar reach'],
+  ['papers/a22_wall_reroute', 'A-2-2', 'Wall reroute'],
+  ['papers/b1_window_crawl', 'B-1', 'Window crawl'],
+  ['papers/b2a_clear_goal', 'B-2a', 'Clear the goal'],
+  ['papers/b2b_clear_access', 'B-2b', 'Clear the access'],
+  ['papers/b3_pressure_plate', 'B-3', 'Pressure plate'],
+  ['papers/b4_gesture_gates', 'B-4', 'Gesture gates'],
+];
+const PAPER_RANK = new Map(PAPER_SCENES.map(([scene], i) => [scene, i]));
+
+function paperScene(x) {
+  const scene = typeof x.scene === 'string' ? x.scene : '';
+  const i = PAPER_RANK.get(scene);
+  return i == null ? null : PAPER_SCENES[i];
+}
+
+function optionLabel(x) {
+  const dur = num(x.duration_s);
+  const clock = dur != null ? ` · ${fmtClock(dur)}` : '';            // no verdict: the episodes are not judged here
+  const ps = paperScene(x);
+  if (!ps) return `${x.title || x.id}${clock}`;
+  const seed = Number.isFinite(Number(x.seed)) ? ` · seed ${x.seed}` : '';
+  return `${ps[1]} ${ps[2]}${seed}${clock}`;
+}
+
+// Within a group: the paper's scenes in the paper's order, then by seed; other bundles after them in the index's order.
+function sortedForPicker(list) {
+  const rank = (x) => {
+    const i = PAPER_RANK.get(typeof x.scene === 'string' ? x.scene : '');
+    return i == null ? PAPER_SCENES.length : i;
+  };
+  const seed = (x) => (Number.isFinite(Number(x.seed)) ? Number(x.seed) : 0);
+  return list
+    .map((x, i) => ({ x, i }))
+    .sort((a, b) => {
+      const ra = rank(a.x);
+      const rb = rank(b.x);
+      if (ra !== rb) return ra - rb;
+      if (ra < PAPER_SCENES.length && seed(a.x) !== seed(b.x)) return seed(a.x) - seed(b.x);   // the paper's scenes: by seed
+      return a.i - b.i;                                                                          // the rest: the index's order
+    })
+    .map(({ x }) => x);
+}
+
+// The picker: one option per bundle of episodes/index.json; bundles that sit in a group folder (`"group": "basic_tasks"`,
+// id `basic_tasks/<id>`) go under an <optgroup> headed by the folder's name. Groups that hold the paper's demo scenes come
+// first, the others in the index's order; inside a group the paper's scene order (see PAPER_SCENES), then the seed.
 function fillPicker(list, current) {
   if (!list.length) return;
-  const nodes = [];
-  const groups = new Map();
+  const groupOf = (x) => (typeof x.group === 'string' && x.group ? x.group : null);
+  const groupNames = [];
   for (const x of list) {
+    const g = groupOf(x);
+    if (g && !groupNames.includes(g)) groupNames.push(g);
+  }
+  const hasPaper = (g) => list.some((x) => groupOf(x) === g && paperScene(x));
+  groupNames.sort((a, b) => Number(hasPaper(b)) - Number(hasPaper(a)));      // stable: paper groups first, the rest as indexed
+  const nodes = [];
+  const makeOption = (x) => {
     const o = document.createElement('option');
     o.value = x.id;
-    const dur = num(x.duration_s);
-    o.textContent = `${x.title || x.id}${dur != null ? ` · ${fmtClock(dur)}` : ''}`;   // no verdict: the episodes are not judged here
+    o.textContent = optionLabel(x);
     if (x.id === current) o.selected = true;
-    const g = typeof x.group === 'string' && x.group ? x.group : null;
-    if (!g) {
-      nodes.push(o);
-      continue;
-    }
-    if (!groups.has(g)) {
-      const og = document.createElement('optgroup');
-      og.label = g.replace(/_/g, ' ');
-      groups.set(g, og);
-      nodes.push(og);
-    }
-    groups.get(g).appendChild(o);
+    return o;
+  };
+  for (const g of groupNames) {
+    const og = document.createElement('optgroup');
+    og.label = g.replace(/_/g, ' ');
+    for (const x of sortedForPicker(list.filter((y) => groupOf(y) === g))) og.appendChild(makeOption(x));
+    nodes.push(og);
   }
+  for (const x of sortedForPicker(list.filter((y) => !groupOf(y)))) nodes.push(makeOption(x));
   ui.select.replaceChildren(...nodes);
   ui.picker.hidden = false;
   ui.select.addEventListener('change', () => {
