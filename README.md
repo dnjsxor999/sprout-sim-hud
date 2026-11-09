@@ -45,7 +45,8 @@ the record formats are described in [docs/design/WEB_HUD.md](../docs/design/WEB_
 ```bash
 cd web
 npm ci && npm run vendor      # the pinned browser libraries into web/vendor/ (MuJoCo WASM 3.14.0, three.js 0.182.0)
-npm run serve                 # python3 -m http.server 8788
+npm run serve                 # python3 scripts/serve.py 8788: a static server that sends Cache-Control: no-store, so a
+                              # plain reload always fetches the current modules (plain http.server lets the browser keep them)
 ```
 
 Open <http://127.0.0.1:8788/>: the first episode of `episodes/index.json` plays. The MuJoCo WASM version must equal the
@@ -64,6 +65,11 @@ player's transcript and the episode log) and adds the episode to `episodes/index
 header. Bundles may sit one level down in group folders (`episodes/basic_tasks/<id>`): the index lists them as
 `<group>/<id>` and the picker shows each group under its own heading. The page reads `episodes/index.json` only, so
 bundles copied in by hand need `--reindex web/episodes`.
+
+`model.mjb` is the compiled scene with its materials and textures (about 20 MB for a paper scene, most of it the
+robot's colour atlas and the scene's skybox), so the page draws the robot's own colours and the pictures on the sign
+boards. A bundle exported before the page drew textures still plays: its robot is drawn in a plain grey and its
+textured surfaces (the sign boards) blank; export it again to see them.
 
 ## Watch a run live
 
@@ -97,6 +103,9 @@ Keyboard: <kbd>space</kbd> play / pause, <kbd>←</kbd> <kbd>→</kbd> seek 5 s,
 ```bash
 npm test        # the reducer over a recorded episode (tests/fixtures): menu, choice, decision, plan, memory, outcome;
                 # re-edits, splices, the watch's verdicts and holds (paper_sweep_4 bundles are checked when present)
+node tests/test_materials.mjs episodes/<id> [...]   # what a bundle's scene is drawn with: every geom's MuJoCo colour,
+                # the textures and texture coordinates (the sign boards' pictograms), the scene's object colours
+node tests/test_mirror.mjs episodes/<id>/model.mjb   # the MuJoCo mirror: loading, mesh arrays, kinematics, world rows
 ```
 
 A headless capture of a given moment:
@@ -132,7 +141,8 @@ index.html  styles.css            the page and its look (colour tokens, dark and
 src/app.js                        boot: the mode from the URL, transport -> reducer -> HUD and viewport, controls
 src/model/pipeline.js             the reducer: timeline rows -> the HUD state (pure; a seek re-reduces)
 src/transport/live.js replay.js   the WebSocket client and the replay player
-src/viewport/                     MuJoCo WASM + three.js: the mirror, the motion's path, dragging
+src/viewport/                     MuJoCo WASM + three.js: the mirror, the scene's materials and textures, the motion's
+                                  path, dragging
 src/hud/panel.js memory.js feed.js the three blocks and their connectors, the memory graph, the bar and feed
 src/util/                         formatting, colours, easing, DOM helpers
 episodes/                         replay bundles and index.json

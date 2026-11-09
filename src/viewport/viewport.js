@@ -13,21 +13,42 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { classifyGeoms, deriveScene, getMujoco, meshArrays, openModel, robotRoot } from './meshes.js';
+import { geomLook, isDefaultLook, matteRoughness, projectedUVs, readLook, textureRGBA } from './materials.js';
 import { PlanOverlay } from './overlays.js';
 import { ObjectDrag } from './drag.js';
 
 /** Page colours (section 8.1) and the scene tones that go with them: a floor a shade off the background so shadows
- * read on it, a grid that is barely there, and a hemisphere fill tinted like the room. */
+ * read on it, a grid that is barely there, a hemisphere fill tinted like the room, and paper, the page's neutral (the
+ * panels' --panel-3 tone in styles.css) the model's colours lean toward. */
 const THEMES = Object.freeze({
   dark: { background: '#0b0d10', floor: '#191c22', gridMajor: '#2a3039', gridMinor: '#1a1e24', sky: '#e4ebf7',
-    ground: '#1c2027' },
+    ground: '#1c2027', paper: '#1d222a' },
   light: { background: '#f6f7f9', floor: '#e8ebef', gridMajor: '#c6ccd5', gridMinor: '#dadee5', sky: '#ffffff',
-    ground: '#b7bdc7' },
+    ground: '#b7bdc7', paper: '#eef0f3' },
 });
 
-/** The robot's visual meshes share one matte light grey: the reader should see the robot's posture, not its parts. */
+/** The paper-figure palette: every colour of the model, plain or textured, robot or world, is softened the same way, a
+ * mild pull toward the theme's paper tone in display values (pull: the share of the paper tone), and drawn matte
+ * (MuJoCo's specular and shininess map into the roughness range; nothing is metallic). The pull is a shader uniform
+ * shared by every model material, so a theme change touches no material. Textures filter with mipmaps and up to
+ * `anisotropy` samples, so a pictogram stays legible at a slant. */
+const PAPER = Object.freeze({ pull: 0.12, roughness: [0.75, 0.9], metalness: 0, alphaTest: 0.5, anisotropy: 8 });
+
+/** A flat mesh (thinner than thicknessM, metres) is a decal on another surface, such as a sign's picture 0.2 mm in front
+ * of its board: its depth is pulled toward the camera by the polygon offset so the surface behind cannot show through it
+ * at a distance, where the depth buffer no longer tells 0.2 mm apart. */
+const DECAL = Object.freeze({ thicknessM: 0.001, offsetFactor: -1, offsetUnits: -4 });
+
+/** The paper pull in the fragment shader of a MeshStandardMaterial, right after the material colour, the texture and
+ * the vertex colours are combined (three's chunks; colours are linear there, so the mix goes through display values). */
+const PAPER_GLSL = `
+	diffuseColor.rgb = sRGBTransferEOTF( vec4( mix( sRGBTransferOETF( vec4( diffuseColor.rgb, 1.0 ) ).rgb, paperNeutral,
+		paperPull ), 1.0 ) ).rgb;`;
+
+/** The grey the robot's visual meshes take when the model gives them no colour of their own (materials.js isDefaultLook:
+ * MuJoCo's default rgba without a material, or a material at its default white without a texture, as in a model saved
+ * without its textures); a robot whose meshes carry a texture or colours shows those. */
 const ROBOT_MATERIAL = Object.freeze({ color: '#d2d5da', roughness: 0.72, metalness: 0.05 });
-const WORLD_ROUGHNESS = 0.62;
 
 /** Object feedback: a faint lift on hover (interactive only); for the object the HUD points at, a ring in JEV's teal
  * around its foot, which marks it without changing its colour (the reader matches it against the camera image). Ring
@@ -144,12 +165,28 @@ function primitiveGeometry(kind, size) {
 }
 
 function meshGeometry(model, meshId) {
-  const { positions, normals, index } = meshArrays(model, meshId);
+  const { positions, normals, index, uvs } = meshArrays(model, meshId);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   if (index) g.setIndex(new THREE.BufferAttribute(index, 1));
   if (normals) g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   else g.computeVertexNormals();
+  // the model's own texture coordinates; userData says so, since three's primitives carry generated ones
+  if (uvs) g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  g.userData.modelUVs = !!uvs;
+  return g;
+}
+
+/** A copy of geometry with texture coordinates projected along the normals (materials.js projectedUVs), for a textured
+ * geom the model gives no coordinates: a box or another primitive, or a mesh without texcoords. */
+function projectedGeometry(geometry, repeat, uniform) {
+  const g = geometry.clone();
+  g.computeBoundingBox();
+  const b = g.boundingBox;
+  const half = [(b.max.x - b.min.x) / 2, (b.max.y - b.min.y) / 2, (b.max.z - b.min.z) / 2];
+  const uv = projectedUVs(g.getAttribute('position').array, g.getAttribute('normal').array, half, repeat, uniform);
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.userData.modelUVs = false;
   return g;
 }
 
@@ -259,6 +296,20 @@ class Viewport {
     this._buildGrid();
 
     this.robotMat = new THREE.MeshStandardMaterial(ROBOT_MATERIAL);
+    /** texture id -> {texture, alpha} | null, built once per model on first use. */
+    this._textures = new Map();
+    // the paper pull's uniforms, shared by every model material (one value per viewport; setTheme writes the tone)
+    this._paper = { paperNeutral: { value: new THREE.Vector3() }, paperPull: { value: PAPER.pull } };
+    this._setPaperTone(theme.paper);
+    const paper = this._paper;
+    // One function for every model material: three keys its shader programs on the function's source, so they share
+    // one program per feature set, and each material links the same uniform objects.
+    this._paperHook = (shader) => {
+      shader.uniforms.paperNeutral = paper.paperNeutral;
+      shader.uniforms.paperPull = paper.paperPull;
+      shader.fragmentShader = `uniform vec3 paperNeutral;\nuniform float paperPull;\n${shader.fragmentShader
+        .replace('#include <color_fragment>', `#include <color_fragment>${PAPER_GLSL}`)}`;
+    };
     this.mirrorGroup = new THREE.Group();
     this.mirrorGroup.name = 'mirror';
     scene.add(this.mirrorGroup);
@@ -325,7 +376,7 @@ class Viewport {
       for (const mesh of rec.meshes) {
         mesh.userData.role = 'world';
         mesh.userData.object = null;
-        mesh.material.emissive.set(0x000000);
+        this._restoreEmissive(mesh);
       }
     }
     this.objects.clear();
@@ -494,6 +545,7 @@ class Viewport {
     this.floorMat.color.set(t.floor);
     this.hemi.color.set(t.sky);
     this.hemi.groundColor.set(t.ground);
+    this._setPaperTone(t.paper);
     this._buildGrid();
     this.overlay.setTheme(name);
     this._dirty = true;
@@ -566,8 +618,13 @@ class Viewport {
     if (skipped.length) {
       console.warn(`viewport: ${skipped.length} geoms of a kind the viewport cannot draw are skipped`, skipped);
     }
+    const look = readLook(mujoco, model);
+    if (look.uniformSource === 'default' && look.materials.some((m) => m.texture >= 0)) {
+      console.warn('viewport: mat_texuniform could not be read; textured boxes and planes repeat per face');
+    }
     const meshes = new Map();
     const primitives = new Map();
+    const projected = new Map();
     this.floorZ = 0;
     for (const g of geoms) {
       if (g.role === 'floor') {
@@ -591,28 +648,112 @@ class Viewport {
         }
       }
       if (!geometry) continue;
+      const appearance = geomLook(model, look, g.id);
+      // a textured geom without the model's texture coordinates gets projected ones (one copy per shape and repeat)
+      let tex = appearance.texture >= 0 ? this._texture(model, look, appearance.texture) : null;
+      if (tex && !geometry.userData.modelUVs) {
+        const shape = g.kind === 'mesh' ? `mesh:${g.dataid}` : `${g.kind}:${g.size.join(',')}`;
+        const key = `${shape}|${appearance.repeat.join(',')}|${appearance.uniform ? 1 : 0}`;
+        let copy = projected.get(key);
+        if (!copy) {
+          copy = projectedGeometry(geometry, appearance.repeat, appearance.uniform);
+          projected.set(key, copy);
+        }
+        geometry = copy;
+      }
+      if (!geometry.getAttribute('uv')) tex = null;
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
-      const material = g.role === 'robot' ? this.robotMat : this._worldMaterial(g.rgba);
+      const material = this._modelMaterial(g, appearance, tex, geometry);
       const mesh = new THREE.Mesh(geometry, material);
       // MuJoCo computes the world pose of every geom; three.js must not recompose it from position/rotation.
       mesh.matrixAutoUpdate = false;
       mesh.castShadow = g.kind !== 'plane';
       mesh.receiveShadow = true;
       mesh.name = g.name;
-      mesh.userData = { geom: g.id, body: g.body, role: g.role, object: null };
+      mesh.userData = { geom: g.id, body: g.body, role: g.role, object: null, appearance,
+        emissive: material.emissive.clone(), emissiveIntensity: material.emissiveIntensity };
       this.mirrorGroup.add(mesh);
       this.geomMeshes.push(mesh);
       this.meshByGeom.set(g.id, mesh);
     }
-    this._geometries = [...meshes.values(), ...primitives.values()];
+    this._geometries = [...meshes.values(), ...primitives.values(), ...projected.values()];
   }
 
-  _worldMaterial(rgba) {
+  /** The material of one drawn geom: its MuJoCo appearance (materials.js geomLook: the colour, a 2-D texture, emission,
+   * a roughness from specular and shininess) in the paper palette. Every geom gets its own material, since hovering an
+   * object lights its own; textures are shared. A robot mesh the model gives no colour (materials.js isDefaultLook)
+   * takes the robot grey. */
+  _modelMaterial(g, appearance, tex, geometry) {
+    // a texture the page cannot draw (no pixels, no coordinates) counts as none
+    const drawn = { ...appearance, texture: tex ? appearance.texture : -1 };
+    if (g.role === 'robot' && isDefaultLook(drawn)) return this.robotMat;
+    const rgba = appearance.rgba;
     const color = new THREE.Color().setRGB(rgba[0], rgba[1], rgba[2], THREE.SRGBColorSpace);
     const transparent = rgba[3] < 1;
-    return new THREE.MeshStandardMaterial({ color, roughness: WORLD_ROUGHNESS, metalness: 0, transparent,
-      opacity: rgba[3], depthWrite: !transparent });
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      map: tex ? tex.texture : null,
+      roughness: matteRoughness(appearance, PAPER.roughness),
+      metalness: PAPER.metalness,
+      transparent,
+      opacity: rgba[3],
+      depthWrite: !transparent,
+      // a texture with transparent pixels (leaves, cut-out shapes) is cut, not blended: no sorting between its faces
+      alphaTest: tex && tex.alpha ? PAPER.alphaTest : 0,
+      // MuJoCo's emission adds the colour itself, scaled
+      emissive: appearance.emission > 0 ? color : 0x000000,
+      emissiveIntensity: appearance.emission > 0 ? appearance.emission : 1,
+    });
+    const b = geometry.boundingBox;
+    if (g.kind === 'mesh' && Math.min(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z) < DECAL.thicknessM) {
+      material.polygonOffset = true;
+      material.polygonOffsetFactor = DECAL.offsetFactor;
+      material.polygonOffsetUnits = DECAL.offsetUnits;
+    }
+    material.onBeforeCompile = this._paperHook;
+    return material;
+  }
+
+  /** The three.js texture of a 2-D model texture, made on first use and shared by every geom that shows it: the model's
+   * pixels as RGBA (materials.js textureRGBA) in sRGB, since MuJoCo shows a texture's bytes as they are, like its rgba
+   * colours, whatever colour space the texture declares. Null when the model holds no pixels for it. */
+  _texture(model, look, texId) {
+    if (this._textures.has(texId)) return this._textures.get(texId);
+    const px = textureRGBA(model, look, texId);
+    let entry = null;
+    if (px) {
+      const texture = new THREE.DataTexture(px.data, px.width, px.height, THREE.RGBAFormat, THREE.UnsignedByteType);
+      texture.name = look.textures[texId].name;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.anisotropy = Math.min(PAPER.anisotropy, this.renderer.capabilities.getMaxAnisotropy());
+      texture.needsUpdate = true;
+      entry = { texture, alpha: px.alpha };
+    }
+    this._textures.set(texId, entry);
+    return entry;
+  }
+
+  /** The paper tone of a theme into the shared uniform, as display (sRGB) values. */
+  _setPaperTone(hex) {
+    const c = new THREE.Color(hex);
+    const s = { r: 0, g: 0, b: 0 };
+    c.getRGB(s, THREE.SRGBColorSpace);
+    this._paper.paperNeutral.value.set(s.r, s.g, s.b);
+  }
+
+  /** Puts a mesh's emissive back to its model value (MuJoCo's emission; black for most) after a hover lit it. */
+  _restoreEmissive(mesh) {
+    const base = mesh.userData.emissive;
+    const intensity = mesh.userData.emissiveIntensity;
+    if (base) mesh.material.emissive.copy(base);
+    else mesh.material.emissive.set(0x000000);
+    mesh.material.emissiveIntensity = Number.isFinite(intensity) ? intensity : 1;
   }
 
   /** Writes the mirror's geom poses into the meshes: geom_xpos and the row-major geom_xmat make the world matrix. */
@@ -676,6 +817,8 @@ class Viewport {
       mesh.removeFromParent();
       if (mesh.material !== this.robotMat) mesh.material.dispose();
     }
+    for (const entry of this._textures.values()) if (entry) entry.texture.dispose();
+    this._textures.clear();
     for (const g of this._geometries) g.dispose();
     this.geomMeshes = [];
     this.meshByGeom.clear();
@@ -810,8 +953,12 @@ class Viewport {
     for (const rec of this.objects.values()) {
       const lit = rec.name === this.hovered && this.interactive ? HOVER_EMISSIVE : null;
       for (const mesh of rec.meshes) {
-        mesh.material.emissive.set(lit ? lit.color : 0x000000);
-        mesh.material.emissiveIntensity = lit ? lit.intensity : 1;
+        if (lit) {
+          mesh.material.emissive.set(lit.color);
+          mesh.material.emissiveIntensity = lit.intensity;
+        } else {
+          this._restoreEmissive(mesh);
+        }
       }
     }
     if (this.mirror) this._placeRing();

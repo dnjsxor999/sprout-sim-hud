@@ -10,11 +10,12 @@ import loadMujoco from '../../vendor/mujoco/mujoco.js';
  * repeats the two robot groups as collision_group / visual_group. */
 export const GEOM_GROUP = Object.freeze({ world: 0, collision: 1, visual: 2 });
 
-/** The virtual file the model is loaded from; the name only has to be consistent between addBuffer and the load. */
+/** The file the model is loaded from (in the module's in-memory file system, else its virtual file system); the name
+ * only has to be consistent between the write and the load. */
 const MODEL_FILE = 'model.mjb';
 
 /** MuJoCo's default geom colour: a geom that still carries it shows its material's colour instead (MuJoCo's rule). */
-const DEFAULT_RGBA = [0.5, 0.5, 0.5, 1];
+export const DEFAULT_RGBA = Object.freeze([0.5, 0.5, 0.5, 1]);
 
 /** A dropped object counts as caught up once the stream puts it this close (metres, in x and y) to the drop point. */
 const CAUGHT_UP_M = 0.005;
@@ -337,23 +338,72 @@ export class MjMirror {
   }
 }
 
-/** Loads an .mjb (ArrayBuffer or typed array) into a new mirror. The virtual file system is deleted right after the
- * load: the model keeps its own copy of everything, and the file would otherwise pin its bytes in the WASM heap. */
-export function openModel(mujoco, buffer) {
-  const bytes = toBytes(buffer);
+/** The module's Emscripten file system, or null. Read through the property descriptor: a build that does not export it
+ * defines a getter that aborts the whole module, which a plain `mujoco.FS` would trigger. */
+function moduleFS(mujoco) {
+  const d = Object.getOwnPropertyDescriptor(mujoco, 'FS');
+  const fs = d && 'value' in d ? d.value : null;
+  return fs && typeof fs.writeFile === 'function' && typeof fs.unlink === 'function' ? fs : null;
+}
+
+/** The model from the module's in-memory file system: the bytes are copied into the WASM heap in one block (about
+ * 10 ms for 20 MB), where MjVFS.addBuffer converts them one byte at a time (about 0.19 us a byte: 3.7 s for a 20 MB
+ * model with its textures, measured in node 22). MuJoCo looks for the file in the (empty) virtual file system first and
+ * then in the module's file system. The file is removed right after the load. */
+function loadThroughFS(mujoco, fs, bytes) {
+  const path = `/${MODEL_FILE}`;
   const vfs = new mujoco.MjVFS();
-  let model = null;
+  try {
+    fs.writeFile(path, bytes);
+    return mujoco.MjModel.mj_loadModel(path, vfs);
+  } finally {
+    try {
+      fs.unlink(path);
+    } catch (err) {
+      // Never written: nothing to remove.
+    }
+    vfs.delete();
+  }
+}
+
+function loadThroughVFS(mujoco, bytes) {
+  const vfs = new mujoco.MjVFS();
   try {
     vfs.addBuffer(MODEL_FILE, bytes);
-    model = mujoco.MjModel.mj_loadModel(MODEL_FILE, vfs);
-  } catch (err) {
-    const version = mujoco.mj_versionString();
-    throw new Error(`MuJoCo could not load the model (${errorText(err)}); `
-      + `it must be an .mjb written by MuJoCo ${version}`);
+    return mujoco.MjModel.mj_loadModel(MODEL_FILE, vfs);
   } finally {
     vfs.delete();
   }
-  if (!model) throw new Error('MuJoCo returned no model for the .mjb');
+}
+
+/** Loads an .mjb (ArrayBuffer or typed array) into a new mirror. The file is removed right after the load: the model
+ * keeps its own copy of everything, and the file would otherwise pin its bytes in the WASM heap. The module's file
+ * system is the fast way in; the virtual file system is the way a module without one (or a load through it that fails)
+ * takes. */
+export function openModel(mujoco, buffer) {
+  const bytes = toBytes(buffer);
+  let model = null;
+  let failure = null;
+  const fs = moduleFS(mujoco);
+  if (fs) {
+    try {
+      model = loadThroughFS(mujoco, fs, bytes);
+    } catch (err) {
+      failure = err;
+    }
+  }
+  if (!model) {
+    try {
+      model = loadThroughVFS(mujoco, bytes);
+    } catch (err) {
+      const version = mujoco.mj_versionString();
+      throw new Error(`MuJoCo could not load the model (${errorText(err)}); `
+        + `it must be an .mjb written by MuJoCo ${version}`);
+    }
+  }
+  if (!model) {
+    throw new Error(`MuJoCo returned no model for the .mjb${failure ? ` (${errorText(failure)})` : ''}`);
+  }
   return new MjMirror(mujoco, model);
 }
 
@@ -416,12 +466,34 @@ export function classifyGeoms(mujoco, model, groups = GEOM_GROUP) {
   return { geoms, skipped };
 }
 
+/** A mesh's texture coordinates, one (u, v) per face corner (mesh_facetexcoord into mesh_texcoord, relative to the
+ * mesh's mesh_texcoordadr), or null when the mesh has none or an index is out of range. MuJoCo's v counts the texture's
+ * rows from its first (top) row, which is how the page uploads the rows too, so the pairs are used as they are. */
+function meshUVs(model, meshId, fadr, fnum) {
+  const tadr = model.mesh_texcoordadr ? model.mesh_texcoordadr[meshId] : -1;
+  const tnum = model.mesh_texcoordnum ? model.mesh_texcoordnum[meshId] : 0;
+  if (!(tadr >= 0 && tnum > 0)) return null;
+  const facetex = model.mesh_facetexcoord;
+  const texcoord = model.mesh_texcoord;
+  if (!facetex || !texcoord || facetex.length < 3 * (fadr + fnum) || texcoord.length < 2 * (tadr + tnum)) return null;
+  const uvs = new Float32Array(6 * fnum);
+  for (let i = 0; i < 3 * fnum; i++) {
+    const t = facetex[3 * fadr + i];
+    if (t < 0 || t >= tnum) return null;
+    uvs[2 * i] = texcoord[2 * (tadr + t)];
+    uvs[2 * i + 1] = texcoord[2 * (tadr + t) + 1];
+  }
+  return uvs;
+}
+
 /**
  * The triangles of one mesh as plain arrays. MuJoCo stores the vertices in the geom's frame (the compiler has already
  * centred and scaled them), so geom_xpos / geom_xmat place them directly. With per-corner normals
  * (mesh_facenormal into mesh_normal) the result is unindexed {positions, normals}, which keeps MuJoCo's hard edges;
- * otherwise it is {positions, index} and the caller computes smooth normals. Face indices are relative to the
- * mesh's own first vertex (mesh_vertadr). Every array is a copy: views over the WASM heap die when the heap grows.
+ * otherwise it is {positions, index} and the caller computes smooth normals. A mesh with texture coordinates also gets
+ * uvs, one pair per corner (texture coordinates belong to face corners, so such a mesh is always unindexed; without
+ * normals the caller computes flat ones). Face indices are relative to the mesh's own first vertex (mesh_vertadr).
+ * Every array is a copy: views over the WASM heap die when the heap grows.
  */
 export function meshArrays(model, meshId) {
   const vadr = model.mesh_vertadr[meshId];
@@ -435,34 +507,37 @@ export function meshArrays(model, meshId) {
   const nadr = model.mesh_normaladr ? model.mesh_normaladr[meshId] : -1;
   const nnum = model.mesh_normalnum ? model.mesh_normalnum[meshId] : 0;
   const haveNormals = nadr >= 0 && nnum > 0 && facenormal && normal && facenormal.length >= 3 * (fadr + fnum);
-  if (haveNormals) {
+  const uvs = meshUVs(model, meshId, fadr, fnum);
+  if (haveNormals || uvs) {
     const positions = new Float32Array(9 * fnum);
-    const normals = new Float32Array(9 * fnum);
+    const normals = haveNormals ? new Float32Array(9 * fnum) : null;
     let ok = true;
     for (let f = 0; f < fnum && ok; f++) {
       for (let c = 0; c < 3; c++) {
         const v = face[3 * (fadr + f) + c];
-        const n = facenormal[3 * (fadr + f) + c];
-        if (v < 0 || v >= vnum || n < 0 || n >= nnum) {
+        const n = haveNormals ? facenormal[3 * (fadr + f) + c] : 0;
+        if (v < 0 || v >= vnum || (haveNormals && (n < 0 || n >= nnum))) {
           ok = false;
           break;
         }
         const o = 9 * f + 3 * c;
         const vo = 3 * (vadr + v);
-        const no = 3 * (nadr + n);
         positions[o] = vert[vo];
         positions[o + 1] = vert[vo + 1];
         positions[o + 2] = vert[vo + 2];
-        normals[o] = normal[no];
-        normals[o + 1] = normal[no + 1];
-        normals[o + 2] = normal[no + 2];
+        if (normals) {
+          const no = 3 * (nadr + n);
+          normals[o] = normal[no];
+          normals[o + 1] = normal[no + 1];
+          normals[o + 2] = normal[no + 2];
+        }
       }
     }
-    if (ok) return { positions, normals, index: null };
+    if (ok) return { positions, normals, index: null, uvs };
   }
   const positions = vert.slice(3 * vadr, 3 * (vadr + vnum));
   const index = new Uint32Array(face.subarray(3 * fadr, 3 * (fadr + fnum)));
-  return { positions, normals: null, index };
+  return { positions, normals: null, index, uvs: null };
 }
 
 /** The robot's root body (the one whose subtree holds the most visual-group geoms) and the qpos address of its free
