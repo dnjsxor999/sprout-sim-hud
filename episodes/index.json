@@ -100,6 +100,246 @@
   "group": "interesting"
  },
  {
+  "id": "paper_sweep_4/000_papers-a11_teleport_grasp_s9001_claude",
+  "title": "papers/a11_teleport_grasp, seed 9001",
+  "scene": "papers/a11_teleport_grasp",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 143.271,
+  "bytes": 8472102,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/000_papers-a21_moving_capture_s9004_claude",
+  "title": "papers/a21_moving_capture, seed 9004",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9004,
+  "outcome": "success",
+  "duration_s": 76.403,
+  "bytes": 8010446,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/001_papers-a11_teleport_grasp_s9002_claude",
+  "title": "papers/a11_teleport_grasp, seed 9002",
+  "scene": "papers/a11_teleport_grasp",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 186.68,
+  "bytes": 8898483,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/001_papers-a21_moving_capture_s9005_claude",
+  "title": "papers/a21_moving_capture, seed 9005",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9005,
+  "outcome": "success",
+  "duration_s": 201.704,
+  "bytes": 9135775,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/002_papers-a11_teleport_grasp_s9003_claude",
+  "title": "papers/a11_teleport_grasp, seed 9003",
+  "scene": "papers/a11_teleport_grasp",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 144.376,
+  "bytes": 8591189,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/002_papers-a21_moving_capture_s9006_claude",
+  "title": "papers/a21_moving_capture, seed 9006",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9006,
+  "outcome": "success",
+  "duration_s": 212.094,
+  "bytes": 9043820,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/003_papers-a12_moving_goal_s9001_claude",
+  "title": "papers/a12_moving_goal, seed 9001",
+  "scene": "papers/a12_moving_goal",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 214.482,
+  "bytes": 9259548,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/003_papers-a21_moving_capture_s9007_claude",
+  "title": "papers/a21_moving_capture, seed 9007",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9007,
+  "outcome": "success",
+  "duration_s": 101.661,
+  "bytes": 8220166,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/004_papers-a12_moving_goal_s9002_claude",
+  "title": "papers/a12_moving_goal, seed 9002",
+  "scene": "papers/a12_moving_goal",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 155.271,
+  "bytes": 8714982,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/004_papers-a21_moving_capture_s9008_claude",
+  "title": "papers/a21_moving_capture, seed 9008",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9008,
+  "outcome": "success",
+  "duration_s": 78.506,
+  "bytes": 8049186,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/005_papers-a12_moving_goal_s9003_claude",
+  "title": "papers/a12_moving_goal, seed 9003",
+  "scene": "papers/a12_moving_goal",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 247.226,
+  "bytes": 9444914,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/006_papers-a21_moving_capture_s9001_claude",
+  "title": "papers/a21_moving_capture, seed 9001",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 76.458,
+  "bytes": 8024870,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/007_papers-a21_moving_capture_s9002_claude",
+  "title": "papers/a21_moving_capture, seed 9002",
+  "scene": "papers/a21_moving_capture",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 103.523,
+  "bytes": 8255343,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/009_papers-a22_slot_wall_s9001_claude",
+  "title": "papers/a22_slot_wall, seed 9001",
+  "scene": "papers/a22_slot_wall",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 123.636,
+  "bytes": 8474092,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/011_papers-a22_slot_wall_s9003_claude",
+  "title": "papers/a22_slot_wall, seed 9003",
+  "scene": "papers/a22_slot_wall",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 123.587,
+  "bytes": 8479997,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/012_papers-b1_window_crawl_s9001_claude",
+  "title": "papers/b1_window_crawl, seed 9001",
+  "scene": "papers/b1_window_crawl",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 809.769,
+  "bytes": 12488589,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/013_papers-b1_window_crawl_s9002_claude",
+  "title": "papers/b1_window_crawl, seed 9002",
+  "scene": "papers/b1_window_crawl",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 1270.316,
+  "bytes": 15466396,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/014_papers-b1_window_crawl_s9003_claude",
+  "title": "papers/b1_window_crawl, seed 9003",
+  "scene": "papers/b1_window_crawl",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 1147.513,
+  "bytes": 16976233,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/018_papers-b2b_clear_access_s9001_claude",
+  "title": "papers/b2b_clear_access, seed 9001",
+  "scene": "papers/b2b_clear_access",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 298.464,
+  "bytes": 30803383,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/020_papers-b2b_clear_access_s9003_claude",
+  "title": "papers/b2b_clear_access, seed 9003",
+  "scene": "papers/b2b_clear_access",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 634.993,
+  "bytes": 34520192,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/022_papers-b3_pressure_plate_s9002_claude",
+  "title": "papers/b3_pressure_plate, seed 9002",
+  "scene": "papers/b3_pressure_plate",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 749.083,
+  "bytes": 24624726,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/024_papers-b4_gesture_gates_s9001_claude",
+  "title": "papers/b4_gesture_gates, seed 9001",
+  "scene": "papers/b4_gesture_gates",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 162.796,
+  "bytes": 8326550,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/025_papers-b4_gesture_gates_s9002_claude",
+  "title": "papers/b4_gesture_gates, seed 9002",
+  "scene": "papers/b4_gesture_gates",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 161.608,
+  "bytes": 8297039,
+  "group": "paper_sweep_4"
+ },
+ {
+  "id": "paper_sweep_4/026_papers-b4_gesture_gates_s9003_claude",
+  "title": "papers/b4_gesture_gates, seed 9003",
+  "scene": "papers/b4_gesture_gates",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 347.49,
+  "bytes": 9164785,
+  "group": "paper_sweep_4"
+ },
+ {
   "id": "tabletop_random_s3",
   "title": "Tabletop pick and place, seed 3",
   "scene": "tabletop_random",

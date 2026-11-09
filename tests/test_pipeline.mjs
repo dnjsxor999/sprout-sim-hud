@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { initialState, reduce, tick, rowActor, learnedIds, menuSummary, FEED_MAX, EVENTS_MAX, PULSES_MAX, STEPS_MAX }
   from '../src/model/pipeline.js';
 import { SPEEDS } from '../src/transport/replay.js';
+import { pickMimeType, recordingName } from '../src/util/recorder.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BUNDLE = path.join(HERE, 'fixtures', 'tabletop_random_s3', 'episode.json');
@@ -68,6 +69,20 @@ function planRow(t, tWall, reedit = false) {
 }
 
 // ---- the menu --------------------------------------------------------------------------------------------------------
+test('the recorder picks the first container the browser records, and names the file after the episode', () => {
+  const only = (...types) => ({ isTypeSupported: (t) => types.includes(t) });
+  assert.equal(pickMimeType(only('video/webm', 'video/webm;codecs=vp9', 'video/mp4')), 'video/webm;codecs=vp9');
+  assert.equal(pickMimeType(only('video/webm;codecs=vp8', 'video/webm')), 'video/webm;codecs=vp8');
+  assert.equal(pickMimeType(only('video/mp4')), 'video/mp4');
+  assert.equal(pickMimeType(only()), null);
+  assert.equal(pickMimeType({ isTypeSupported: () => { throw new Error('unknown'); } }), null);
+  assert.equal(pickMimeType(undefined), null);
+  const at = new Date(2026, 10, 2, 9, 5, 7);
+  assert.equal(recordingName('interesting/003_tabletop_random_s3_claude', 'video/webm;codecs=vp9', at),
+    'interesting_003_tabletop_random_s3_claude_20261102-090507.webm');
+  assert.equal(recordingName('live', 'video/mp4', at), 'live_20261102-090507.mp4');
+});
+
 test('the first jev_query_options result leaves a menu of 14 candidates', () => {
   const [s] = reduceUntil(isResult('jev_query_options'));
   assert.equal(s.jev.menu.candidates.length, 14);

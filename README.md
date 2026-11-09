@@ -96,6 +96,22 @@ google-chrome --headless=new --disable-gpu --window-size=1600,1000 --virtual-tim
 Under `--virtual-time-budget` the browser renders no frame between a change and the screenshot, so every entry
 animation would be caught at its first frame: `?still=1` turns animations off and `?t=` picks the moment.
 
+## Recording
+
+**Record** in the header records the page itself: the browser asks what to share. In Chrome the picker opens on its
+"Chrome Tab" pane with "This Tab" listed first (older Chrome shows three panes, "Entire Screen / Window / Chrome Tab":
+pick the Chrome Tab pane, then this page). Safari and Firefox capture windows and screens only: pick the browser window.
+Screen capture exists only on a secure page, so open the page at `http://localhost:8788`, `http://127.0.0.1:8788` or
+over https; at a LAN address or a machine name the button says so instead of recording. While it records, the button shows a red dot and the elapsed
+time; a click on it (or "Stop sharing" in the browser's bar) stops the recording and downloads it as
+`<episode>_<YYYYMMDD-HHMMSS>.webm` (`live_...` in a live run; `.mp4` in a browser that records only MP4). Leaving the
+page (the episode picker, a reload) ends the recording too, and its file is then usually lost: stop first. To turn the
+WebM into an MP4 for slides or chat:
+
+```bash
+ffmpeg -i x.webm -c:v libx264 -pix_fmt yuv420p x.mp4
+```
+
 ## The folder
 
 ```

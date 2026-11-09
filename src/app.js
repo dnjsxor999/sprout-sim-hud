@@ -18,6 +18,7 @@ import { createFeed } from './hud/feed.js';
 import { loadBundle, createPlayer, initialLibrary, SPEEDS } from './transport/replay.js';
 import { connectLive, createLiveMirror, fetchModel, modelUrlFor, DEFAULT_WS } from './transport/live.js';
 import { boundName, num, clamp, fmtBytes, fmtClock, refName } from './util/format.js';
+import { createRecorder } from './util/recorder.js';
 
 const HUD_FRAME_MS = 1000 / 30;     // the HUD redraws at most at 30 Hz; the viewport every animation frame
 const RAF_STALL_MS = 100;           // no animation frame for this long (a hidden tab, a headless capture): a timer
@@ -30,6 +31,8 @@ const HINT_MS = 2600;               // how long a hint raised by the viewport st
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
 const ui = {
+  recBtn: $('rec-btn'),
+  recLabel: document.querySelector('#rec-btn .rec-label'),
   stage: $('stage'),
   viewport: $('viewport'),
   canvas: $('vp-canvas'),
@@ -62,6 +65,7 @@ let state = initialState();
 let mode = 'empty';
 let player = null;
 let bundle = null;
+let episodeId = null;          // the replayed bundle's id, which names a recording of the page
 let live = null;
 let mirror = null;
 let t0 = null;
@@ -198,10 +202,10 @@ function onDrag({ name, pos, live: dragging }) {
   setTimeout(() => { lastHighlight = undefined; }, DROP_SETTLE_MS);
 }
 
-// the viewport raises a hint when a drag cannot apply (a replay has no simulator to move the object)
+// the hint line says for a moment why something did not happen, then goes back to its own hint: the viewport raises
+// one when a drag cannot apply (a replay has no simulator to move the object), the recorder when the browser refused
 let hintTimer = 0;
-ui.viewport.addEventListener('viewport-hint', (e) => {
-  const text = e.detail ? String(e.detail) : '';
+function flashHint(text) {
   if (!text) return;
   const base = ui.hint.dataset.base ?? ui.hint.textContent;
   ui.hint.dataset.base = base;
@@ -212,8 +216,28 @@ ui.viewport.addEventListener('viewport-hint', (e) => {
   hintTimer = setTimeout(() => {
     ui.hint.textContent = ui.hint.dataset.base;
     ui.hint.classList.remove('flash');
+    if (!ui.hint.textContent) ui.hint.hidden = true;     // the empty page has no hint of its own to go back to
   }, HINT_MS);
+}
+ui.viewport.addEventListener('viewport-hint', (e) => flashHint(e.detail ? String(e.detail) : ''));
+
+// ---- recording the page (src/util/recorder.js) ------------------------------------------------------------------
+// One button: Record asks the browser for this tab; while it records the button reads "Stop 0:12" and a click stops
+// it. The file is named after the replayed episode, or 'live'.
+const recorder = createRecorder({
+  onState: ({ recording, elapsed_s: s }) => {
+    ui.recBtn.classList.toggle('recording', recording);
+    ui.recBtn.setAttribute('aria-pressed', String(recording));
+    ui.recLabel.textContent = recording ? `Stop ${fmtClock(s)}` : 'Record';
+  },
+  onError: (msg) => flashHint(msg),
 });
+ui.recBtn.addEventListener('click', () => {
+  if (recorder.recording) recorder.stop();
+  else recorder.start(mode === 'replay' && episodeId ? episodeId : 'live');
+});
+// leaving the page ends the capture (the browser keeps no recorder alive without its page)
+window.addEventListener('pagehide', () => recorder.stop());
 
 ui.cams.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-cam]');
@@ -688,11 +712,13 @@ async function boot() {
   }
   const index = ep ? null : await loadIndex();
   if (ep) {
+    episodeId = ep;
     loadIndex().then((list) => fillPicker(list, ep));
     await startReplay(episodeUrl(ep), vpReady$);
     return;
   }
   if (index.length) {
+    episodeId = index[0].id;
     fillPicker(index, index[0].id);
     await startReplay(episodeUrl(index[0].id), vpReady$);
     return;

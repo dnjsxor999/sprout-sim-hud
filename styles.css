@@ -230,6 +230,33 @@ button, input, select { font: inherit; color: inherit; }
 }
 .connect summary::-webkit-details-marker { display: none; }
 .connect[open] summary { background: var(--panel-3); }
+/* Record: the page records itself (src/util/recorder.js); while it does, a red dot blinks before the elapsed time */
+.rec-btn {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--hair-2);
+  background: transparent;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  flex: none;
+}
+.rec-btn:hover { background: var(--panel-3); }
+.rec-label { font-size: 11.5px; }
+.rec-dot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--fail); flex: none; }
+.rec-btn.recording { color: var(--fail-ink); border-color: color-mix(in srgb, var(--fail) 45%, transparent); }
+.rec-btn.recording .rec-dot { display: block; animation: rec-blink 1s steps(1, end) infinite; }
+@keyframes rec-blink {
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-btn.recording .rec-dot { animation: none; }
+}
 .pop {
   position: absolute;
   right: 0;
