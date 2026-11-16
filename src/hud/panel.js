@@ -10,7 +10,9 @@ import { short, num, clamp, isObj, fmtP, bindingsText, decisionFields, decisionC
 import { actorVar } from '../util/colors.js';
 import { PULSE_MS, PULSE_LINGER_MS, MORPH_MS, JEV_DWELL_MS, easeInOutCubic, easeOutCubic, prefersReducedMotion, lerp }
   from '../util/easing.js';
-import { menuSummary, changeWords, withVerdict } from '../model/pipeline.js';
+import { menuSummary, changeWords, withVerdict, rtCountText } from '../model/pipeline.js';
+import { scoreView } from '../model/score.js';
+import { createScoreBlock } from './score.js';
 
 const PULSE_FRESH_S = 3;       // pulses older than this at the playback clock (after a seek) are not animated
 const PULSES_LIVE_MAX = 8;     // pulses animating at once (a fast-forward does not flood the wires)
@@ -35,6 +37,9 @@ const LABEL_OUT_MS = 300;      // and fades out over the end of its linger
 const PULSE_TRAIL = [[0, 4.5, 1], [0.035, 3.7, 0.55], [0.07, 3, 0.3]];
 // what JEV did with the motion it handed to the engine, by channel (the status after the hand-over)
 const HANDED_VERB = { hand: 'Edited', gaze: 'Aimed', base: 'Planned', root: 'Planned' };
+// the edit thumbnail in a stream of re-edits (as the 3-D overlay's FOLLOW, viewport/overlays.js): a re-edit this soon
+// after the previous plan of the motion glides from the curve as drawn in this many ms
+const FOLLOW_MS = Object.freeze({ windowMs: 500, morphMs: 180 });
 
 const LLM_PERCEIVE_TEXT = {
   get_camera_image: 'Looking through the head camera',
@@ -56,6 +61,15 @@ const LLM_ACT_TEXT = {
 
 function el(root, sel) {
   return root.querySelector(sel);
+}
+
+/** The edit thumbnail's curve as a morph `m` draws it at `now` (or at the morph fraction `f`): the start curve eased
+ * toward the edited one. */
+function morphPoints(m, now, f = null) {
+  const u = f != null ? f : m.done || m.reduced ? 1 : clamp((now - m.start) / m.ms, 0, 1);
+  const ease = easeInOutCubic(u);
+  const n = Math.min(m.g.length, m.e.length);
+  return m.e.map((p, i) => (i < n ? [lerp(m.g[i][0], p[0], ease), lerp(m.g[i][1], p[1], ease)] : p));
 }
 
 /** ?still=1: a capture without animations shows every state as it is (no pulses, no pacing). */
@@ -123,10 +137,15 @@ function buildJev() {
           h('span', { class: 'lbl' }, 'decision'),
           h('span', { class: 'card-title mono' })),
         h('p', { class: 'card-meta mono' }),
+        // a track that joined the run beside it (a gaze track), in a small line: "gaze → obj:ball_*"
+        h('p', { class: 'card-joined mono', hidden: true }),
         h('div', { class: 'fields' }),
         h('p', { class: 'reason mono' })),
       s('svg', { class: 'edit', viewBox: '0 0 96 64', hidden: true, role: 'img', 'aria-label': 'The motion before (dashed) and after JEV edited it, seen from above' },
         s('path', { class: 'ghost' }), s('path', { class: 'edited' }), s('circle', { class: 'goal', r: 3.2 }),
+        // a two-handed motion's second arm (`plan.second`), drawn as it is beside the first
+        s('path', { class: 'ghost sec', hidden: true }), s('path', { class: 'edited sec', hidden: true }),
+        s('circle', { class: 'goal sec', r: 3.2, hidden: true }),
         s('circle', { class: 'here', r: 2.4 }), s('text', { class: 'cap', x: 48, y: 62, 'text-anchor': 'middle' }, 'edit · from above'))),
     // the watch: JEV follows every tick of the running motion and asks the decider at periodic checks whether its
     // decision still stands; the three bars tick while the motion runs
@@ -141,6 +160,8 @@ function buildEngine() {
   b.append(h('div', { class: 'run', hidden: true },
     h('div', { class: 'run-head' },
       h('span', { class: 'motion mono' }),
+      // a real-time motion's key moments so far ("· strikes 12"), after its name
+      h('span', { class: 'rtc mono', hidden: true }),
       h('span', { class: 'badge channel mono' }),
       h('span', { class: 'arm' }),
       h('span', { class: 'mode mono' }),
@@ -148,8 +169,24 @@ function buildEngine() {
     h('div', { class: 'phase' },
       h('div', { class: 'track' }, h('div', { class: 'fill' }), h('div', { class: 'marks' })),
       h('span', { class: 'pct mono' })),
-    h('p', { class: 'pause', hidden: true })));
+    h('p', { class: 'pause', hidden: true }),
+    // why the hand did not take the target, the last time (a real-time run: until its next launch)
+    h('p', { class: 'rtwhy', hidden: true })));
   return b;
+}
+
+/**
+ * The Engine block's line of a real-time run's last reason for not taking the target (pipeline.js rtReason), or null:
+ * "Last attempt: gave up the reach — the target would ride out of the arm's reach before the jaws close", "Last pass: no
+ * attempt this pass — … (3 passes in a row)". `title` keeps the lane's words.
+ */
+export function rtReasonLine(run) {
+  const r = run && run.last_reason;
+  if (!r || !r.text) return null;
+  const lead = r.kind === 'miss' ? 'Last attempt' : 'Last pass';
+  const verb = r.kind === 'no_meeting' ? 'no attempt' : r.verb;
+  const count = r.kind === 'no_meeting' && r.passes > 1 ? ` (${r.passes} passes in a row)` : '';
+  return { text: `${lead}: ${verb} — ${r.text}${count}`, title: r.lane ? `the lane: ${r.lane}` : null };
 }
 
 // ---- status words ------------------------------------------------------------------------------------------------------------
@@ -160,6 +197,8 @@ function llmStatus(st) {
     case 'idle': return 'Waiting for the episode to start';
     case 'perceiving': return LLM_PERCEIVE_TEXT[tool] || 'Perceiving the scene';
     case 'thinking': return 'Thinking';
+    // a looping real-time run's periodic report (a turn without an event): no decision is asked for
+    case 'reading': return 'Reading a progress report';
     case 'asking': {
       const q = st.jev.query || st.jev.menu || {};
       return `Asking JEV which motions fit “${q.intent ?? '…'}”${q.target ? ` on ${q.target}` : ''}`;
@@ -269,6 +308,8 @@ export function engineStatus(st) {
     return `Paused: ${changeWords(p.change)}${why ? ` · ${why}` : ''} · the LLM decides`;
   }
   if (!r.ended && r.outcome == null) return `Running ${r.motion}`;
+  // a run still going when the episode ended (a looping real-time motion) ended with it
+  if (r.with_episode) return `Ended with the episode · ${r.with_episode}`;
   const counts = r.channel === 'hand' ? runCountsText(r.counts) : '';
   if (r.outcome === 'success') return `${r.motion} succeeded${num(r.run_s) != null ? ` in ${num(r.run_s).toFixed(1)} s` : ''}${counts}`;
   return `${r.motion} failed${r.reason ? `: ${r.reason}` : ''}${counts}`;
@@ -297,10 +338,18 @@ export function watchLine(st) {
   const live = !!run && !run.ended && run.outcome == null;
   const current = !!run && (live || j.steps_cmd_t_wall == null || num(run.t_wall_start, -Infinity) >= j.steps_cmd_t_wall);
   if (!current) return null;
-  // the latest check, when it judged this run (a check counts on the run it judged)
-  const w = run.n_watch > 0 && j.watch && j.watch.motion === run.motion ? j.watch : null;
+  // the latest check, when it judged this run (a check counts on the run it judged; a real-time lane's report may come
+  // before the plan that starts the run on the page)
+  const w = (run.n_watch > 0 || (j.watch && j.watch.rt)) && j.watch
+    && (j.watch.motion === run.motion || (run.motions || []).includes(j.watch.motion)) ? j.watch : null;
   const n = run.n_watch;
   const resting = live && !!run.held;
+  if (w && w.rt) {
+    // a real-time motion's lane reports how it goes (its own words, shortened; the whole report in the title): the line
+    // stays on its latest report through the run and after it
+    return { text: w.text || 'real-time lane', live, intervene: !!w.intervene, w,
+      title: w.why ? `the real-time lane: ${String(w.why).replace(/^real-time lane:\s*/, '')}` : 'the real-time lane' };
+  }
   let text;
   if (resting) text = 'resting';
   else if (live && w) text = withVerdict(`watching every tick · check ${w.n} · p ${fmtP(w.p)}`, w.verdict);
@@ -350,15 +399,19 @@ function cardFields(decision) {
  * and the memory strip). `viewport` / `memory`: the elements the world and memory connectors end at.
  *
  * `render(state, ctx)` is called at the HUD's frame rate whether or not the state changed: the paced reveal of JEV's
- * steps advances on these calls. `ctx.speed` is the replay speed (1 when live), which scales the dwell of a step.
+ * steps advances on these calls. `ctx.speed` is the replay speed (1 when live), which scales the dwell of a step;
+ * `ctx.t` is the playhead's sim time and `ctx.relAt` maps a sim time to the time bar (a replay), for the Score block
+ * under the three (hud/score.js: `score.onSeek(tSim)`, `score.onToggle(open)`, `score.open`).
  */
-export function createPanel(root, { stage, viewport, memory } = {}) {
+export function createPanel(root, { stage, viewport, memory, score: scoreOpts = {} } = {}) {
   const llm = buildLlm();
   const jev = buildJev();
   const eng = buildEngine();
-  root.replaceChildren(llm, jev, eng);
+  const score = createScoreBlock(scoreOpts);
+  root.replaceChildren(llm, jev, eng, score.el);
   const blocks = { llm, jev, engine: eng };
-  const wires = createWires(stage, () => ({ llm, jev, engine: eng, memory, world: viewport }));
+  const wires = createWires(stage, () => ({ llm, jev, engine: eng, memory, world: viewport,
+    score: score.el.hidden ? null : score.el }));
   const view = {
     imageB64: null, choiceKey: null, wordsKey: null, menuKey: null, menuN: 0, menuStateKey: null,
     decisionKey: null, cardPrev: null, planSeq: -1, morph: null, marksKey: null, lastPulse: 0, recvTimers: new Map(),
@@ -371,10 +424,10 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
   // ---- LLM ------------------------------------------------------------------------------------------------------------------
   function renderLlm(st, ctx) {
     const l = st.llm;
-    setClass(llm, 'busy', ['perceiving', 'thinking', 'deciding', 'acting'].includes(l.phase));
+    setClass(llm, 'busy', ['perceiving', 'thinking', 'deciding', 'acting', 'reading'].includes(l.phase));
     setText(el(llm, '.tag'), l.phase);
     setText(el(llm, '.st'), llmStatus(st));
-    const thinking = l.phase === 'thinking' || l.phase === 'deciding';
+    const thinking = l.phase === 'thinking' || l.phase === 'deciding' || l.phase === 'reading';
     setHidden(el(llm, '.think'), !thinking);
     if (thinking) setText(el(llm, '.secs'), `${num(l.thinking_s, 0).toFixed(1)} s`);
 
@@ -417,11 +470,12 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
       const refused = st.jev.refusal && (!st.jev.accepted || st.jev.refusal.t_wall >= st.jev.accepted.t_wall)
         && st.jev.refusal.t_wall >= (c.t_wall ?? 0);
       const stale = asked || done || refused;
-      setText(el(choice, '.lbl'), stale ? 'last' : 'chose');
+      setText(el(choice, '.lbl'), stale ? 'last' : c.modified ? 'changed' : 'chose');
       setClass(choice, 'stale', !!stale);
       setClass(insight, 'stale', !!stale);
       setText(el(choice, '.pick'), c.motion ?? '—');
       setText(el(choice, '.bind'), bindingsText(c.bindings));
+      setAttr(el(choice, '.bind'), 'title', bindingsText(c.bindings, true) || null);
       setText(insight, c.insight ? `“${c.insight}”` : '');
       setAttr(insight, 'title', c.insight || null);
       const key = `${c.t_wall}|${c.motion}`;
@@ -702,20 +756,29 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
         view.decisionKey = key;
         fillCard(card, d);
       }
-    } else if (view.decisionKey !== null) {
-      view.decisionKey = null;
-      view.cardPrev = null;
+    } else {
+      if (view.decisionKey !== null) {
+        view.decisionKey = null;
+        view.cardPrev = null;
+        setAttr(el(card, '.card-title'), 'title', null);
+        setText(el(card, '.card-meta'), '');
+        const box = el(card, '.fields');
+        box.replaceChildren();
+        delete box.dataset.keys;
+        setText(el(card, '.reason'), '');
+        setAttr(el(card, '.reason'), 'title', null);
+        setClass(card, 'redecided', false);
+        setClass(card, 'spliced', false);
+      }
+      // a card without a decision shows the edit of the motion that runs (a command refused beside it took none): its
+      // title names that motion, whenever the card came up
       setText(el(card, '.card-title'), plan ? plan.motion : '');
-      setAttr(el(card, '.card-title'), 'title', null);
-      setText(el(card, '.card-meta'), '');
-      const box = el(card, '.fields');
-      box.replaceChildren();
-      delete box.dataset.keys;
-      setText(el(card, '.reason'), '');
-      setAttr(el(card, '.reason'), 'title', null);
-      setClass(card, 'redecided', false);
-      setClass(card, 'spliced', false);
     }
+    const run = st.engine.run;
+    const joined = run && run.joined_bind && (d ? d.motion === run.motion : !!plan && plan.motion === run.motion) ? run.joined_bind : '';
+    setHidden(el(card, '.card-joined'), !joined);
+    setText(el(card, '.card-joined'), joined);
+    setAttr(el(card, '.card-joined'), 'title', joined ? 'a track that joined this run' : null);
     renderEdit(card, plan, st);
   }
 
@@ -773,20 +836,33 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     const edited = Array.isArray(plan.edited) ? plan.edited : [];
     if (st.jev.plan_seq !== view.planSeq) {
       view.planSeq = st.jev.plan_seq;
+      const prev = view.morph;
       view.morph = null;
-      const pts = [...ghost, ...edited, ...(Array.isArray(plan.goal) ? [plan.goal] : [])].filter((p) => Array.isArray(p) && p.length >= 2);
+      const now = performance.now();
+      // a re-edit in a stream of them (the real-time lane re-aims several times a second; overlays.js FOLLOW) glides from
+      // the curve as drawn, in the same frame of the thumbnail, instead of growing out of the ghost again every time
+      const follow = !!prev && prev.motion === plan.motion && prev.arm === (plan.arm ?? null)
+        && (plan.rt === true || now - prev.at < FOLLOW_MS.windowMs);
+      const sec = isObj(plan.second) ? plan.second : null;
+      const secLists = sec ? [sec.ghost, sec.edited, Array.isArray(sec.goal) ? [sec.goal] : []].map((x) => (Array.isArray(x) ? x : [])) : [];
+      const pts = [...ghost, ...edited, ...(Array.isArray(plan.goal) ? [plan.goal] : []), ...secLists.flat()]
+        .filter((p) => Array.isArray(p) && p.length >= 2);
       if (!pts.length) return;
-      // from above: forward (world x) is up, left (world y) is left
-      const xs = pts.map((p) => -p[1]);
-      const ys = pts.map((p) => -p[0]);
-      const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 0.05);
-      const k = 46 / span;
-      const ox = 48 - ((Math.min(...xs) + Math.max(...xs)) / 2) * k;
-      const oy = 28 - ((Math.min(...ys) + Math.max(...ys)) / 2) * k;
-      const map = (p) => [ox - p[1] * k, oy - p[0] * k];
+      let map = follow ? prev.map : null;
+      if (!map) {
+        // from above: forward (world x) is up, left (world y) is left
+        const xs = pts.map((p) => -p[1]);
+        const ys = pts.map((p) => -p[0]);
+        const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 0.05);
+        const k = 46 / span;
+        const ox = 48 - ((Math.min(...xs) + Math.max(...xs)) / 2) * k;
+        const oy = 28 - ((Math.min(...ys) + Math.max(...ys)) / 2) * k;
+        map = (p) => [ox - p[1] * k, oy - p[0] * k];
+      }
       const path = (list) => list.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
       const g = ghost.map(map);
       const e = edited.map(map);
+      const shown = follow ? morphPoints(prev, now) : null;
       el(svg, '.ghost').setAttribute('d', path(g));
       if (Array.isArray(plan.goal)) {
         const [gx, gy] = map(plan.goal);
@@ -794,15 +870,29 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
         el(svg, '.goal').setAttribute('cy', gy.toFixed(1));
       }
       setSvgHidden(el(svg, '.goal'), !Array.isArray(plan.goal));
-      view.morph = { g, e, path, start: performance.now(), reduced: prefersReducedMotion() || view.quiet, done: false };
+      const secPath = (cls, list) => {
+        const node = el(svg, `.${cls}.sec`);
+        setSvgHidden(node, !(list.length > 1));
+        if (list.length > 1) node.setAttribute('d', path(list.map(map)));
+      };
+      secPath('ghost', sec ? secLists[0] : []);
+      secPath('edited', sec ? secLists[1] : []);
+      const goal2 = el(svg, '.goal.sec');
+      setSvgHidden(goal2, !(sec && Array.isArray(sec.goal)));
+      if (sec && Array.isArray(sec.goal)) {
+        const [gx, gy] = map(sec.goal);
+        goal2.setAttribute('cx', gx.toFixed(1));
+        goal2.setAttribute('cy', gy.toFixed(1));
+      }
+      view.morph = { g: shown && shown.length === e.length ? shown : g, e, path, map, start: now, at: now,
+        ms: follow ? FOLLOW_MS.morphMs : MORPH_MS, motion: plan.motion, arm: plan.arm ?? null,
+        reduced: prefersReducedMotion() || view.quiet, done: false };
     }
     const m = view.morph;
     if (!m) return;
     if (!m.done) {
-      const f = m.reduced ? 1 : clamp((performance.now() - m.start) / MORPH_MS, 0, 1);
-      const ease = easeInOutCubic(f);
-      const n = Math.min(m.g.length, m.e.length);
-      el(svg, '.edited').setAttribute('d', m.path(m.e.map((p, i) => (i < n ? [lerp(m.g[i][0], p[0], ease), lerp(m.g[i][1], p[1], ease)] : p))));
+      const f = m.reduced ? 1 : clamp((performance.now() - m.start) / m.ms, 0, 1);
+      el(svg, '.edited').setAttribute('d', m.path(morphPoints(m, null, f)));
       if (f >= 1) m.done = true;
     }
     // the progress marker: the edited curve is sampled at evenly spaced phases, so the run's phase indexes it
@@ -849,6 +939,8 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     setText(el(row, '.wt'), line.text);
     setClass(row, 'live', line.live);
     setClass(row, 'intervene', line.intervene);
+    // a swinging target's report (C-6) takes two lines; every other report stays one
+    setClass(row, 'wrap', !!(line.w && line.w.swing));
     setAttr(row, 'title', line.title);
     const w = line.w;
     if (w && w.t_wall !== view.watchKey) {
@@ -883,10 +975,15 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     setHidden(box, !r);
     if (!r) return;
     setText(el(box, '.motion'), r.motion ?? '—');
+    const rtc = rtCountText(r);
+    setHidden(el(box, '.rtc'), !rtc);
+    setText(el(box, '.rtc'), rtc ? `· ${rtc}` : '');
     const ch = el(box, '.channel');
-    setText(ch, r.channel ?? '');
+    // a real-time run's tracks that joined it (a gaze track beside the hands) follow its channel: "hand + gaze"
+    const joined = Array.isArray(r.joined) ? r.joined.filter((c) => c && c !== r.channel) : [];
+    setText(ch, [r.channel ?? '', ...joined].filter(Boolean).join(' + '));
     setAttr(ch, 'data-channel', r.channel);
-    setText(el(box, '.arm'), r.arm ? `${r.arm} arm` : '');
+    setText(el(box, '.arm'), r.arm ? (r.arm === 'both' ? 'both arms' : `${r.arm} arm`) : '');
     const mode = e.mode ? e.mode.replace(/_control_module$/, '') : '';
     setText(el(box, '.mode'), mode);
     setAttr(el(box, '.mode'), 'title', e.mode ? `the robot's control mode: ${e.mode}` : null);
@@ -894,13 +991,19 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     const ended = r.ended || r.outcome != null;
     setHidden(out, !ended);
     if (ended) {
-      setText(out, r.outcome === 'success' ? 'success' : `${r.outcome ?? 'ended'}${r.reason ? ` · ${r.reason}` : ''}`);
-      setClass(out, 'ok', r.outcome === 'success');
-      setClass(out, 'fail', r.outcome !== 'success');
+      // a run that ended with the episode reads by the episode's outcome: it did not fail on its own
+      const good = r.with_episode ? r.with_episode === 'success' : r.outcome === 'success';
+      setText(out, r.with_episode ? 'ended'
+        : r.outcome === 'success' ? 'success' : `${r.outcome ?? 'ended'}${r.reason ? ` · ${r.reason}` : ''}`);
+      setClass(out, 'ok', good);
+      setClass(out, 'fail', !good);
     }
     const ph = clamp(num(r.phase, 0), 0, 1);
     setStyle(el(box, '.fill'), 'width', `${(100 * ph).toFixed(1)}%`);
-    setText(el(box, '.pct'), `${Math.round(100 * ph)}%`);
+    // a loop has no end: the bar is the phase within the current cycle, and the percentage says it goes round
+    setClass(el(box, '.phase'), 'loop', !!r.loop);
+    setText(el(box, '.pct'), `${r.loop ? '↻' : ''}${Math.round(100 * ph)}%`);
+    setAttr(el(box, '.pct'), 'title', r.loop ? 'the phase within the current cycle: the motion repeats until it is stopped' : null);
     // the marks: the watch's checks (ticks), the follows (teal diamonds), the spliced decisions (rings, their step as title)
     const marksKey = `${r.t_wall_start}|${r.watch_marks.length}|${r.reedit_marks.length}|${r.splice_marks.length}`;
     if (marksKey !== view.marksKey) {
@@ -912,7 +1015,15 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
     }
     const pause = el(box, '.pause');
     setHidden(pause, !r.paused);
-    if (r.paused && r.pause) setText(pause, short(r.pause.text || 'an object moved', 120));
+    // a real-time behaviour's pause gives its own words (the first sentence; the whole advice in the title)
+    if (r.paused && r.pause) setText(pause, short(r.pause.text || 'an object moved', 170));
+    setAttr(pause, 'title', r.paused && r.pause && r.pause.full ? r.pause.full : null);
+    // a pause tells its own story; otherwise the last reason the hand did not take it stands until the next launch
+    const why = r.paused ? null : rtReasonLine(r);
+    const whyEl = el(box, '.rtwhy');
+    setHidden(whyEl, !why);
+    setText(whyEl, why ? why.text : '');
+    setAttr(whyEl, 'title', why ? why.title : null);
   }
 
   // ---- pulses ---------------------------------------------------------------------------------------------------------------
@@ -943,6 +1054,7 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
       renderLlm(st, ctx);
       renderJev(st, ctx);
       renderEngine(st, ctx);
+      score.render(scoreView(st.episode, ctx.t, { atEnd: ctx.at_end === true }), st, ctx);
       wires.layout(view.relayout);
       view.relayout = false;
       wires.highlight(st);
@@ -958,13 +1070,20 @@ export function createPanel(root, { stage, viewport, memory } = {}) {
       view.decisionKey = null;
       view.cardPrev = null;
       view.planSeq = -1;
+      view.morph = null;       // the thumbnail is drawn afresh: no curve of before the seek to glide from
       view.marksKey = null;
       view.choiceKey = null;
       view.wordsKey = null;
       view.stepsKey = null;
       view.watchKey = null;
       view.quiet = true;
+      score.reset();
       wires.clear();
+    },
+    /** Open the Score block and bring it into view (the bar's score chip was clicked); a second click closes it. */
+    toggleScore() {
+      score.setOpen(!score.open, true);
+      if (score.open && typeof score.el.scrollIntoView === 'function') score.el.scrollIntoView({ block: 'nearest' });
     },
     /** The stage was resized: the wires and the menu's fold are measured again at the next render. */
     relayout() {
@@ -1049,8 +1168,11 @@ function createWires(stage, getEls) {
     svg.setAttribute('viewBox', `0 0 ${o.width.toFixed(0)} ${o.height.toFixed(0)}`);
     svg.setAttribute('width', o.width.toFixed(0));
     svg.setAttribute('height', o.height.toFixed(0));
-    const { llm, jev, engine, memory, world } = R;
+    const { llm, jev, engine, memory, world, score } = R;
     const x = llm.l + 18;
+    // the lowest block of the panel: the Score block when it is shown (the spine runs past it, the feed from the memory
+    // turns below it)
+    const low = score ? Math.max(engine.b, score.b) : engine.b;
     const side = world && world.r <= llm.l - 4;          // the panel sits beside the viewport (wide layout)
     set('llm-jev', `M${x} ${llm.b} L${x} ${jev.t}`, [x + 10, (llm.b + jev.t) / 2, 'start']);
     set('jev-engine', `M${x} ${jev.b} L${x} ${engine.t}`, [x + 10, (jev.b + engine.t) / 2, 'start']);
@@ -1066,9 +1188,9 @@ function createWires(stage, getEls) {
       set('engine-llm', '', [0, 0, 'start'], false);
       if (world) set('world-llm', `M${x} ${world.b - 24} L${x} ${llm.t + 10}`, [x + 10, (world.b + llm.t) / 2, 'start'], false);
     }
-    if (side && memory && memory.t > engine.b) {
+    if (side && memory && memory.t > low) {
       const gx2 = jev.r + Math.max(4, Math.min(8, (o.width - jev.r) / 2 || 8));
-      const my = (engine.b + memory.t) / 2;
+      const my = (low + memory.t) / 2;
       set('memory-jev', rounded([[jev.r - 34, memory.t], [jev.r - 34, my], [gx2, my], [gx2, jev.t + 18], [jev.r, jev.t + 18]]),
         [gx2 - 8, (jev.t + jev.b) / 2 + 28, 'end']);
     } else {

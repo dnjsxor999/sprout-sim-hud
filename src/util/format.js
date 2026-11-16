@@ -89,12 +89,21 @@ export function refKind(ref) {
   return i > 0 ? s.slice(0, i) : null;
 }
 
-/** Bindings as one short phrase: {"hands": "obj:cylinder_0"} -> "hands → obj:cylinder_0". */
-export function bindingsText(bindings) {
+/** A text binding that is a list of words (a maze's route "A1 A2 B2 C2 ... E5") as its first word, an ellipsis, its last
+ * word and its length: "A1 … E5 (13)"; anything shorter, and every reference, as it is. */
+export function shortBinding(v) {
+  if (typeof v !== 'string') return JSON.stringify(v);
+  const words = v.trim().split(/\s+/);
+  return words.length > 4 ? `${words[0]} … ${words[words.length - 1]} (${words.length})` : v;
+}
+
+/** Bindings as one short phrase: {"hands": "obj:cylinder_0"} -> "hands → obj:cylinder_0"; with `full`, every value as
+ * it is (the line's title). */
+export function bindingsText(bindings, full = false) {
   if (!isObj(bindings)) return '';
   return Object.entries(bindings)
     .filter(([, v]) => v != null && v !== '')
-    .map(([k, v]) => `${k} → ${typeof v === 'string' ? v : JSON.stringify(v)}`)
+    .map(([k, v]) => `${k} → ${full ? (typeof v === 'string' ? v : JSON.stringify(v)) : shortBinding(v)}`)
     .join(' · ');
 }
 
@@ -141,10 +150,17 @@ export function decisionFields(decision) {
   if (!isObj(decision)) return [];
   const dims = Array.isArray(decision.dimensions) ? decision.dimensions.map(String) : null;
   let keys;
+  let own = false;   // the decision's own dimensions: their values read with spaces ("each cell")
   if (dims && dims.length) {
     const set = new Set(dims);
     if (set.has('pinch')) set.add('face');
     keys = FIELD_ORDER.filter((k) => set.has(k));
+    // a decision over dimensions of its own (a real-time motion's pace, side, tilt, ...; none of the grasp's or the set
+    // down's), recorded with its `values`: every declared one, in its order, named as it is
+    if (!keys.length && isObj(decision.values)) {
+      keys = dims.filter((k) => k !== 'waist' && (k in decision || k in decision.values));
+      own = true;
+    }
   } else {
     keys = GRASP_DEFAULT.filter((k) => k in decision);
   }
@@ -152,8 +168,9 @@ export function decisionFields(decision) {
   const exempt = new Set(Array.isArray(decision.exempt) ? decision.exempt.map(String) : []);
   return keys.map((k) => ({
     key: k,
-    label: FIELD_LABEL[k] || k,
-    value: fieldValue(k, decision[k]),
+    label: FIELD_LABEL[k] || k.replace(/_/g, ' '),
+    value: own ? fieldValue(k, k in decision ? decision[k] : decision.values[k]).replace(/_/g, ' ')
+      : fieldValue(k, decision[k]),
     conf: num(conf[k]),
     exempt: exempt.has(k),
   }));

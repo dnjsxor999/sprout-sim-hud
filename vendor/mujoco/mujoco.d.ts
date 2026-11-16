@@ -298,6 +298,11 @@ export interface mjrVertexAttributeUsageValue<T extends number> {
 }
 export type mjrVertexAttributeUsage = mjrVertexAttributeUsageValue<0>|mjrVertexAttributeUsageValue<1>|mjrVertexAttributeUsageValue<2>|mjrVertexAttributeUsageValue<3>|mjrVertexAttributeUsageValue<4>;
 
+export interface mjtActuatorValue<T extends number> {
+  value: T;
+}
+export type mjtActuator = mjtActuatorValue<0>|mjtActuatorValue<1>|mjtActuatorValue<2>|mjtActuatorValue<3>|mjtActuatorValue<4>|mjtActuatorValue<5>|mjtActuatorValue<6>|mjtActuatorValue<7>|mjtActuatorValue<8>|mjtActuatorValue<9>|mjtActuatorValue<10>|mjtActuatorValue<11>;
+
 export interface mjtAlignFreeValue<T extends number> {
   value: T;
 }
@@ -351,7 +356,7 @@ export type mjtColorSpace = mjtColorSpaceValue<0>|mjtColorSpaceValue<1>|mjtColor
 export interface mjtConDataFieldValue<T extends number> {
   value: T;
 }
-export type mjtConDataField = mjtConDataFieldValue<0>|mjtConDataFieldValue<1>|mjtConDataFieldValue<2>|mjtConDataFieldValue<3>|mjtConDataFieldValue<4>|mjtConDataFieldValue<5>|mjtConDataFieldValue<6>|mjtConDataFieldValue<7>;
+export type mjtConDataField = mjtConDataFieldValue<0>|mjtConDataFieldValue<1>|mjtConDataFieldValue<2>|mjtConDataFieldValue<3>|mjtConDataFieldValue<4>|mjtConDataFieldValue<5>|mjtConDataFieldValue<6>|mjtConDataFieldValue<7>|mjtConDataFieldValue<8>|mjtConDataFieldValue<9>;
 
 export interface mjtConeValue<T extends number> {
   value: T;
@@ -381,7 +386,7 @@ export type mjtCtrlChart = mjtCtrlChartValue<1>|mjtCtrlChartValue<2>;
 export interface mjtCtrlInputValue<T extends number> {
   value: T;
 }
-export type mjtCtrlInput = mjtCtrlInputValue<1>|mjtCtrlInputValue<2>|mjtCtrlInputValue<4>|mjtCtrlInputValue<8>|mjtCtrlInputValue<16>;
+export type mjtCtrlInput = mjtCtrlInputValue<1>|mjtCtrlInputValue<2>|mjtCtrlInputValue<4>|mjtCtrlInputValue<8>|mjtCtrlInputValue<16>|mjtCtrlInputValue<32>;
 
 export interface mjtDataTypeValue<T extends number> {
   value: T;
@@ -403,10 +408,15 @@ export interface mjtDynValue<T extends number> {
 }
 export type mjtDyn = mjtDynValue<0>|mjtDynValue<1>|mjtDynValue<2>|mjtDynValue<3>|mjtDynValue<4>|mjtDynValue<5>|mjtDynValue<6>|mjtDynValue<7>;
 
+export interface mjtEmbedValue<T extends number> {
+  value: T;
+}
+export type mjtEmbed = mjtEmbedValue<0>|mjtEmbedValue<1>|mjtEmbedValue<2>;
+
 export interface mjtEnableBitValue<T extends number> {
   value: T;
 }
-export type mjtEnableBit = mjtEnableBitValue<1>|mjtEnableBitValue<2>|mjtEnableBitValue<4>|mjtEnableBitValue<8>|mjtEnableBitValue<16>|mjtEnableBitValue<32>|mjtEnableBitValue<64>|mjtEnableBitValue<7>;
+export type mjtEnableBit = mjtEnableBitValue<1>|mjtEnableBitValue<2>|mjtEnableBitValue<4>|mjtEnableBitValue<8>|mjtEnableBitValue<16>|mjtEnableBitValue<32>|mjtEnableBitValue<64>|mjtEnableBitValue<128>|mjtEnableBitValue<8>;
 
 export interface mjtEqValue<T extends number> {
   value: T;
@@ -417,6 +427,11 @@ export interface mjtEventValue<T extends number> {
   value: T;
 }
 export type mjtEvent = mjtEventValue<0>|mjtEventValue<1>|mjtEventValue<2>|mjtEventValue<3>|mjtEventValue<4>|mjtEventValue<5>|mjtEventValue<6>|mjtEventValue<7>|mjtEventValue<8>;
+
+export interface mjtFlexSectionValue<T extends number> {
+  value: T;
+}
+export type mjtFlexSection = mjtFlexSectionValue<0>|mjtFlexSectionValue<1>;
 
 export interface mjtFlexSelfValue<T extends number> {
   value: T;
@@ -526,7 +541,7 @@ export type mjtMark = mjtMarkValue<0>|mjtMarkValue<1>|mjtMarkValue<2>|mjtMarkVal
 export interface mjtMeshBuiltinValue<T extends number> {
   value: T;
 }
-export type mjtMeshBuiltin = mjtMeshBuiltinValue<0>|mjtMeshBuiltinValue<1>|mjtMeshBuiltinValue<2>|mjtMeshBuiltinValue<3>|mjtMeshBuiltinValue<4>|mjtMeshBuiltinValue<5>|mjtMeshBuiltinValue<6>|mjtMeshBuiltinValue<7>;
+export type mjtMeshBuiltin = mjtMeshBuiltinValue<0>|mjtMeshBuiltinValue<1>|mjtMeshBuiltinValue<2>|mjtMeshBuiltinValue<3>|mjtMeshBuiltinValue<4>|mjtMeshBuiltinValue<5>|mjtMeshBuiltinValue<6>|mjtMeshBuiltinValue<7>|mjtMeshBuiltinValue<8>|mjtMeshBuiltinValue<9>|mjtMeshBuiltinValue<10>|mjtMeshBuiltinValue<11>|mjtMeshBuiltinValue<12>|mjtMeshBuiltinValue<13>;
 
 export interface mjtMeshInertiaValue<T extends number> {
   value: T;
@@ -547,6 +562,11 @@ export interface mjtOrientationValue<T extends number> {
   value: T;
 }
 export type mjtOrientation = mjtOrientationValue<0>|mjtOrientationValue<1>|mjtOrientationValue<2>|mjtOrientationValue<3>|mjtOrientationValue<4>;
+
+export interface mjtPassthroughValue<T extends number> {
+  value: T;
+}
+export type mjtPassthrough = mjtPassthroughValue<0>|mjtPassthroughValue<1>;
 
 export interface mjtPertBitValue<T extends number> {
   value: T;
@@ -571,7 +591,7 @@ export type mjtRayDataField = mjtRayDataFieldValue<0>|mjtRayDataFieldValue<1>|mj
 export interface mjtRndFlagValue<T extends number> {
   value: T;
 }
-export type mjtRndFlag = mjtRndFlagValue<0>|mjtRndFlagValue<1>|mjtRndFlagValue<2>|mjtRndFlagValue<3>|mjtRndFlagValue<4>|mjtRndFlagValue<5>|mjtRndFlagValue<6>|mjtRndFlagValue<7>|mjtRndFlagValue<8>|mjtRndFlagValue<9>|mjtRndFlagValue<10>|mjtRndFlagValue<11>;
+export type mjtRndFlag = mjtRndFlagValue<0>|mjtRndFlagValue<1>|mjtRndFlagValue<2>|mjtRndFlagValue<3>|mjtRndFlagValue<4>|mjtRndFlagValue<5>|mjtRndFlagValue<6>|mjtRndFlagValue<7>|mjtRndFlagValue<8>|mjtRndFlagValue<9>|mjtRndFlagValue<10>|mjtRndFlagValue<11>|mjtRndFlagValue<12>;
 
 export interface mjtSDFTypeValue<T extends number> {
   value: T;
@@ -582,6 +602,11 @@ export interface mjtSameFrameValue<T extends number> {
   value: T;
 }
 export type mjtSameFrame = mjtSameFrameValue<0>|mjtSameFrameValue<1>|mjtSameFrameValue<2>|mjtSameFrameValue<3>|mjtSameFrameValue<4>;
+
+export interface mjtScalingValue<T extends number> {
+  value: T;
+}
+export type mjtScaling = mjtScalingValue<0>|mjtScalingValue<1>;
 
 export interface mjtSectionValue<T extends number> {
   value: T;
@@ -616,12 +641,17 @@ export type mjtStage = mjtStageValue<0>|mjtStageValue<1>|mjtStageValue<2>|mjtSta
 export interface mjtStateValue<T extends number> {
   value: T;
 }
-export type mjtState = mjtStateValue<1>|mjtStateValue<2>|mjtStateValue<4>|mjtStateValue<8>|mjtStateValue<16>|mjtStateValue<32>|mjtStateValue<64>|mjtStateValue<128>|mjtStateValue<256>|mjtStateValue<512>|mjtStateValue<1024>|mjtStateValue<2048>|mjtStateValue<4096>|mjtStateValue<8192>|mjtStateValue<14>|mjtStateValue<30>|mjtStateValue<8223>|mjtStateValue<8128>|mjtStateValue<16383>;
+export type mjtState = mjtStateValue<1>|mjtStateValue<2>|mjtStateValue<4>|mjtStateValue<8>|mjtStateValue<16>|mjtStateValue<32>|mjtStateValue<64>|mjtStateValue<128>|mjtStateValue<256>|mjtStateValue<512>|mjtStateValue<1024>|mjtStateValue<2048>|mjtStateValue<4096>|mjtStateValue<8192>|mjtStateValue<16384>|mjtStateValue<15>|mjtStateValue<16414>|mjtStateValue<24607>|mjtStateValue<8128>|mjtStateValue<32767>;
 
 export interface mjtStereoValue<T extends number> {
   value: T;
 }
 export type mjtStereo = mjtStereoValue<0>|mjtStereoValue<1>|mjtStereoValue<2>;
+
+export interface mjtTendonValue<T extends number> {
+  value: T;
+}
+export type mjtTendon = mjtTendonValue<0>|mjtTendonValue<1>;
 
 export interface mjtTextureValue<T extends number> {
   value: T;
@@ -759,6 +789,7 @@ export interface MjModelGeomAccessor extends ClassHandle {
   group: any;
   priority: any;
   sameframe: any;
+  castshadow: any;
   solmix: any;
   solref: any;
   solimp: any;
@@ -781,6 +812,7 @@ export interface MjModelHfieldAccessor extends ClassHandle {
   ncol: any;
   adr: any;
   data: any;
+  pathadr: any;
 }
 
 export interface MjModelJointAccessor extends ClassHandle {
@@ -792,11 +824,13 @@ export interface MjModelJointAccessor extends ClassHandle {
   qposadr: any;
   dofadr: any;
   group: any;
+  plasticadr: any;
   limited: any;
   pos: any;
   axis: any;
   stiffness: any;
   stiffnesspoly: any;
+  springyield: any;
   range: any;
   margin: any;
   user: any;
@@ -859,6 +893,7 @@ export interface MjModelMeshAccessor extends ClassHandle {
   faceadr: any;
   facenum: any;
   graphadr: any;
+  pathadr: any;
 }
 
 export interface MjModelNumericAccessor extends ClassHandle {
@@ -928,15 +963,18 @@ export interface MjModelSkinAccessor extends ClassHandle {
   facenum: any;
   boneadr: any;
   bonenum: any;
+  pathadr: any;
 }
 
 export interface MjModelTendonAccessor extends ClassHandle {
   readonly id: number;
   readonly name: string;
+  _type: any;
   _adr: any;
   _num: any;
   _matid: any;
   _group: any;
+  plasticadr: any;
   _limited: any;
   _width: any;
   _solref_lim: any;
@@ -951,6 +989,7 @@ export interface MjModelTendonAccessor extends ClassHandle {
   _dampingpoly: any;
   _frictionloss: any;
   _lengthspring: any;
+  springyield: any;
   _length0: any;
   _invweight0: any;
   _user: any;
@@ -964,11 +1003,14 @@ export interface MjModelTextureAccessor extends ClassHandle {
   readonly id: number;
   readonly name: string;
   type: any;
+  colorspace: any;
   height: any;
   width: any;
   nchannel: any;
   adr: any;
   data: any;
+  pathadr: any;
+  contenttypeadr: any;
 }
 
 export interface MjModelTupleAccessor extends ClassHandle {
@@ -991,6 +1033,7 @@ export interface MjModelKeyframeAccessor extends ClassHandle {
   mpos: any;
   mquat: any;
   ctrl: any;
+  plastic: any;
 }
 
 export interface MjDataActuatorAccessor extends ClassHandle {
@@ -998,9 +1041,9 @@ export interface MjDataActuatorAccessor extends ClassHandle {
   readonly name: string;
   ctrl: any;
   length: any;
-  moment: any;
   velocity: any;
   force: any;
+  readonly moment: any;
 }
 
 export interface MjDataBodyAccessor extends ClassHandle {
@@ -1011,6 +1054,7 @@ export interface MjDataBodyAccessor extends ClassHandle {
   xquat: any;
   xmat: any;
   xipos: any;
+  xiquat: any;
   ximat: any;
   subtree_com: any;
   cinert: any;
@@ -1034,6 +1078,7 @@ export interface MjDataGeomAccessor extends ClassHandle {
   readonly id: number;
   readonly name: string;
   xpos: any;
+  xquat: any;
   xmat: any;
 }
 
@@ -1057,6 +1102,7 @@ export interface MjDataJointAccessor extends ClassHandle {
   qacc_smooth: any;
   qfrc_constraint: any;
   qfrc_inverse: any;
+  plastic: any;
 }
 
 export interface MjDataLightAccessor extends ClassHandle {
@@ -1076,6 +1122,7 @@ export interface MjDataSiteAccessor extends ClassHandle {
   readonly id: number;
   readonly name: string;
   xpos: any;
+  xquat: any;
   xmat: any;
 }
 
@@ -1086,6 +1133,7 @@ export interface MjDataTendonAccessor extends ClassHandle {
   wrapnum: any;
   length: any;
   velocity: any;
+  plastic: any;
 }
 
 export interface MjContact extends ClassHandle {
@@ -1108,6 +1156,7 @@ export interface MjContact extends ClassHandle {
   readonly solimp: any;
   readonly solref: any;
   readonly solreffriction: any;
+  readonly surfacevel: any;
   readonly vert: any;
   copy(): MjContact;
 }
@@ -1190,15 +1239,16 @@ export interface MjData extends ClassHandle {
   readonly efm_ts: any;
   readonly energy: any;
   readonly eq_active: any;
+  readonly flex_hessian_valid: any;
   readonly flexedge_J: any;
+  readonly flexedge_hessian: any;
   readonly flexedge_length: any;
   readonly flexedge_velocity: any;
   readonly flexelem_aabb: any;
   readonly flexelem_krot: any;
-  readonly flexvert_J: any;
   readonly flexvert_conage: any;
+  readonly flexvert_hessian: any;
   readonly flexvert_lambda: any;
-  readonly flexvert_length: any;
   readonly flexvert_xpos: any;
   flg_energypos: boolean;
   flg_energyvel: boolean;
@@ -1206,6 +1256,7 @@ export interface MjData extends ClassHandle {
   flg_subtreevel: boolean;
   readonly geom_xmat: any;
   readonly geom_xpos: any;
+  readonly geom_xquat: any;
   readonly history: any;
   readonly iacc: any;
   readonly iacc_smooth: any;
@@ -1270,6 +1321,7 @@ export interface MjData extends ClassHandle {
   parena: number;
   readonly parent_awake_ind: any;
   pbase: number;
+  readonly plastic: any;
   readonly plugin: any;
   readonly plugin_data: any;
   readonly plugin_state: any;
@@ -1301,6 +1353,7 @@ export interface MjData extends ClassHandle {
   signature: bigint;
   readonly site_xmat: any;
   readonly site_xpos: any;
+  readonly site_xquat: any;
   readonly solver_fwdinv: any;
   readonly solver_niter: any;
   readonly solver_nnz: any;
@@ -1327,6 +1380,7 @@ export interface MjData extends ClassHandle {
   readonly xfrc_applied: any;
   readonly ximat: any;
   readonly xipos: any;
+  readonly xiquat: any;
   readonly xmat: any;
   readonly xpos: any;
   readonly xquat: any;
@@ -1495,6 +1549,7 @@ export interface MjModel extends ClassHandle {
   readonly efm0_L_rowadr: any;
   readonly efm0_L_rownnz: any;
   readonly efm0_dofid: any;
+  readonly efmC_perm: any;
   readonly eq_active0: any;
   readonly eq_data: any;
   readonly eq_obj1id: any;
@@ -1531,14 +1586,10 @@ export interface MjModel extends ClassHandle {
   readonly flex_elemlayer: any;
   readonly flex_elemnum: any;
   readonly flex_elemtexcoord: any;
-  readonly flex_evpair: any;
-  readonly flex_evpairadr: any;
-  readonly flex_evpairnum: any;
   readonly flex_flatskin: any;
   readonly flex_friction: any;
   readonly flex_gap: any;
   readonly flex_group: any;
-  readonly flex_internal: any;
   readonly flex_interp: any;
   readonly flex_margin: any;
   readonly flex_matid: any;
@@ -1548,6 +1599,8 @@ export interface MjModel extends ClassHandle {
   readonly flex_nodebodyid: any;
   readonly flex_nodenum: any;
   readonly flex_passive: any;
+  readonly flex_plasticadr: any;
+  readonly flex_plasticmode: any;
   readonly flex_priority: any;
   readonly flex_radius: any;
   readonly flex_rgba: any;
@@ -1568,26 +1621,22 @@ export interface MjModel extends ClassHandle {
   readonly flex_vert0: any;
   readonly flex_vertadr: any;
   readonly flex_vertbodyid: any;
-  readonly flex_vertedge: any;
-  readonly flex_vertedgeadr: any;
-  readonly flex_vertedgenum: any;
-  readonly flex_vertmetric: any;
+  readonly flex_vertcell: any;
   readonly flex_vertnum: any;
+  readonly flex_yield: any;
   readonly flexedge_J_colind: any;
   readonly flexedge_J_rowadr: any;
   readonly flexedge_J_rownnz: any;
   readonly flexedge_invweight0: any;
   readonly flexedge_length0: any;
   readonly flexedge_rigid: any;
-  readonly flexvert_J_colind: any;
-  readonly flexvert_J_rowadr: any;
-  readonly flexvert_J_rownnz: any;
   flg_adhesion: boolean;
   flg_gravcomp: boolean;
   flg_surfacevel: boolean;
   readonly geom_aabb: any;
   readonly geom_adhesion: any;
   readonly geom_bodyid: any;
+  readonly geom_castshadow: any;
   readonly geom_conaffinity: any;
   readonly geom_condim: any;
   readonly geom_contype: any;
@@ -1628,11 +1677,13 @@ export interface MjModel extends ClassHandle {
   readonly jnt_group: any;
   readonly jnt_limited: any;
   readonly jnt_margin: any;
+  readonly jnt_plasticadr: any;
   readonly jnt_pos: any;
   readonly jnt_qposadr: any;
   readonly jnt_range: any;
   readonly jnt_solimp: any;
   readonly jnt_solref: any;
+  readonly jnt_springyield: any;
   readonly jnt_stiffness: any;
   readonly jnt_stiffnesspoly: any;
   readonly jnt_type: any;
@@ -1641,6 +1692,7 @@ export interface MjModel extends ClassHandle {
   readonly key_ctrl: any;
   readonly key_mpos: any;
   readonly key_mquat: any;
+  readonly key_plastic: any;
   readonly key_qpos: any;
   readonly key_qvel: any;
   readonly key_time: any;
@@ -1717,7 +1769,6 @@ export interface MjModel extends ClassHandle {
   nC: number;
   nD: number;
   nJfe: number;
-  nJfv: number;
   nJmom: number;
   nJten: number;
   nM: number;
@@ -1758,6 +1809,7 @@ export interface MjModel extends ClassHandle {
   nconmax: number;
   nefm0L: number;
   nefm0dof: number;
+  nefmCvert: number;
   nemax: number;
   neq: number;
   nexclude: number;
@@ -1767,7 +1819,6 @@ export interface MjModel extends ClassHandle {
   nflexelem: number;
   nflexelemdata: number;
   nflexelemedge: number;
-  nflexevpair: number;
   nflexnode: number;
   nflexshelldata: number;
   nflexstiffness: number;
@@ -1802,6 +1853,7 @@ export interface MjModel extends ClassHandle {
   nout: number;
   npair: number;
   npaths: number;
+  nplastic: number;
   nplugin: number;
   npluginattr: number;
   npluginstate: number;
@@ -1933,20 +1985,24 @@ export interface MjModel extends ClassHandle {
   readonly tendon_margin: any;
   readonly tendon_matid: any;
   readonly tendon_num: any;
+  readonly tendon_plasticadr: any;
   readonly tendon_range: any;
   readonly tendon_rgba: any;
   readonly tendon_solimp_fri: any;
   readonly tendon_solimp_lim: any;
   readonly tendon_solref_fri: any;
   readonly tendon_solref_lim: any;
+  readonly tendon_springyield: any;
   readonly tendon_stiffness: any;
   readonly tendon_stiffnesspoly: any;
   readonly tendon_treeid: any;
   readonly tendon_treenum: any;
+  readonly tendon_type: any;
   readonly tendon_user: any;
   readonly tendon_width: any;
   readonly tex_adr: any;
   readonly tex_colorspace: any;
+  readonly tex_contenttypeadr: any;
   readonly tex_data: any;
   readonly tex_height: any;
   readonly tex_nchannel: any;
@@ -2247,6 +2303,7 @@ export interface MjsActuator extends ClassHandle {
   get target(): string;
   set target(value: EmbindString);
   trntype: mjtTrn;
+  type: mjtActuator;
   readonly velrange: any;
   element: MjsElement;
   plugin: MjsPlugin;
@@ -2271,6 +2328,7 @@ export interface MjsBody extends ClassHandle {
   set childclass(value: EmbindString);
   explicitinertial: boolean;
   readonly fullinertia: any;
+  fuse: number;
   gravcomp: number;
   readonly inertia: any;
   get info(): string;
@@ -2332,6 +2390,9 @@ export interface MjsCompiler extends ClassHandle {
   readonly inertiagrouprange: any;
   get meshdir(): string;
   set meshdir(value: EmbindString);
+  passthrough: mjtPassthrough;
+  savecanonical: boolean;
+  savecompiled: boolean;
   saveinertial: boolean;
   settotalmass: number;
   get texturedir(): string;
@@ -2353,6 +2414,7 @@ export interface MjsDefault extends ClassHandle {
   pair: MjsPair;
   site: MjsSite;
   tendon: MjsTendon;
+  texture: MjsTexture;
 }
 
 export interface MjsElement extends ClassHandle {
@@ -2397,6 +2459,7 @@ export interface MjsFlex extends ClassHandle {
   edgedamping: number;
   edgestiffness: number;
   elastic2d: number;
+  elastic3d: number;
   element: MjsElement;
   flatskin: boolean;
   readonly friction: any;
@@ -2404,23 +2467,25 @@ export interface MjsFlex extends ClassHandle {
   group: number;
   get info(): string;
   set info(value: EmbindString);
-  internal: boolean;
   margin: number;
-  get material(): string;
-  set material(value: EmbindString);
   order: number;
   passive: number;
   poisson: number;
   priority: number;
   radius: number;
   readonly rgba: any;
+  section: mjtFlexSection;
+  readonly sectionsize: any;
   selfcollide: mjtFlexSelf;
+  shear: number;
   readonly size: any;
   readonly solimp: any;
   solmix: number;
   readonly solref: any;
+  readonly stressyield: any;
   thickness: number;
   young: number;
+  readonly material: mjStringVec;
   readonly nodebody: mjStringVec;
   readonly vertbody: mjStringVec;
   readonly elem: mjIntVec;
@@ -2436,13 +2501,17 @@ export interface MjsFrame extends ClassHandle {
   element: MjsElement;
   get info(): string;
   set info(value: EmbindString);
+  massscale: number;
   readonly pos: any;
   readonly quat: any;
+  readonly scale: any;
+  scaling: mjtScaling;
   alt: MjsOrientation;
 }
 
 export interface MjsGeom extends ClassHandle {
   adhesion: number;
+  castshadow: boolean;
   conaffinity: number;
   condim: number;
   contype: number;
@@ -2519,6 +2588,7 @@ export interface MjsJoint extends ClassHandle {
   readonly solref_limit: any;
   readonly springdamper: any;
   springref: number;
+  springyield: number;
   readonly stiffness: any;
   type: mjtJoint;
   readonly userdata: mjDoubleVec;
@@ -2533,6 +2603,7 @@ export interface MjsKey extends ClassHandle {
   readonly ctrl: mjDoubleVec;
   readonly mpos: mjDoubleVec;
   readonly mquat: mjDoubleVec;
+  readonly plastic: mjDoubleVec;
   readonly qpos: mjDoubleVec;
   readonly qvel: mjDoubleVec;
 }
@@ -2601,9 +2672,11 @@ export interface MjsMesh extends ClassHandle {
   readonly userface: mjIntVec;
   readonly userfacenormal: mjIntVec;
   readonly userfacetexcoord: mjIntVec;
+  readonly usertet: mjIntVec;
   readonly usernormal: mjFloatVec;
   readonly usertexcoord: mjFloatVec;
   readonly uservert: mjFloatVec;
+  readonly usernode: mjDoubleVec;
 }
 
 export interface MjsNumeric extends ClassHandle {
@@ -2737,6 +2810,7 @@ export interface MjsTendon extends ClassHandle {
   readonly solref_friction: any;
   readonly solref_limit: any;
   readonly springlength: any;
+  springyield: number;
   readonly stiffness: any;
   width: number;
   readonly userdata: mjDoubleVec;
@@ -2756,6 +2830,7 @@ export interface MjsTexture extends ClassHandle {
   get content_type(): string;
   set content_type(value: EmbindString);
   element: MjsElement;
+  embed: mjtEmbed;
   get file(): string;
   set file(value: EmbindString);
   readonly gridlayout: any;
@@ -2858,6 +2933,7 @@ export interface MjvGLCamera extends ClassHandle {
 
 export interface MjvGeom extends ClassHandle {
   camdist: number;
+  castshadow: number;
   category: number;
   dataid: number;
   emission: number;
@@ -3132,6 +3208,7 @@ interface EmbindModule {
   mjrPixelFormat: {mjPIXEL_FORMAT_UNKNOWN: mjrPixelFormatValue<0>, mjPIXEL_FORMAT_R8: mjrPixelFormatValue<1>, mjPIXEL_FORMAT_RGB8: mjrPixelFormatValue<2>, mjPIXEL_FORMAT_RGBA8: mjrPixelFormatValue<3>, mjPIXEL_FORMAT_R32F: mjrPixelFormatValue<4>, mjPIXEL_FORMAT_DEPTH32F: mjrPixelFormatValue<5>, mjPIXEL_FORMAT_KTX: mjrPixelFormatValue<6>};
   mjrVertexAttributeType: {mjVERTEX_ATTRIBUTE_TYPE_FLOAT2: mjrVertexAttributeTypeValue<0>, mjVERTEX_ATTRIBUTE_TYPE_FLOAT3: mjrVertexAttributeTypeValue<1>, mjVERTEX_ATTRIBUTE_TYPE_FLOAT4: mjrVertexAttributeTypeValue<2>, mjVERTEX_ATTRIBUTE_TYPE_UBYTE4: mjrVertexAttributeTypeValue<3>};
   mjrVertexAttributeUsage: {mjVERTEX_ATTRIBUTE_USAGE_POSITION: mjrVertexAttributeUsageValue<0>, mjVERTEX_ATTRIBUTE_USAGE_NORMAL: mjrVertexAttributeUsageValue<1>, mjVERTEX_ATTRIBUTE_USAGE_TANGENTS: mjrVertexAttributeUsageValue<2>, mjVERTEX_ATTRIBUTE_USAGE_UV: mjrVertexAttributeUsageValue<3>, mjVERTEX_ATTRIBUTE_USAGE_COLOR: mjrVertexAttributeUsageValue<4>};
+  mjtActuator: {mjACTUATOR_GENERAL: mjtActuatorValue<0>, mjACTUATOR_MOTOR: mjtActuatorValue<1>, mjACTUATOR_POSITION: mjtActuatorValue<2>, mjACTUATOR_VELOCITY: mjtActuatorValue<3>, mjACTUATOR_INTVELOCITY: mjtActuatorValue<4>, mjACTUATOR_DAMPER: mjtActuatorValue<5>, mjACTUATOR_CYLINDER: mjtActuatorValue<6>, mjACTUATOR_MUSCLE: mjtActuatorValue<7>, mjACTUATOR_ADHESION: mjtActuatorValue<8>, mjACTUATOR_PID: mjtActuatorValue<9>, mjACTUATOR_ORIENTATION: mjtActuatorValue<10>, mjACTUATOR_DCMOTOR: mjtActuatorValue<11>};
   mjtAlignFree: {mjALIGNFREE_FALSE: mjtAlignFreeValue<0>, mjALIGNFREE_TRUE: mjtAlignFreeValue<1>, mjALIGNFREE_AUTO: mjtAlignFreeValue<2>};
   mjtBias: {mjBIAS_NONE: mjtBiasValue<0>, mjBIAS_AFFINE: mjtBiasValue<1>, mjBIAS_MUSCLE: mjtBiasValue<2>, mjBIAS_DCMOTOR: mjtBiasValue<3>, mjBIAS_SO3: mjtBiasValue<4>, mjBIAS_USER: mjtBiasValue<5>};
   mjtBuiltin: {mjBUILTIN_NONE: mjtBuiltinValue<0>, mjBUILTIN_GRADIENT: mjtBuiltinValue<1>, mjBUILTIN_CHECKER: mjtBuiltinValue<2>, mjBUILTIN_FLAT: mjtBuiltinValue<3>};
@@ -3142,20 +3219,22 @@ interface EmbindModule {
   mjtCamera: {mjCAMERA_FREE: mjtCameraValue<0>, mjCAMERA_TRACKING: mjtCameraValue<1>, mjCAMERA_FIXED: mjtCameraValue<2>, mjCAMERA_USER: mjtCameraValue<3>};
   mjtCatBit: {mjCAT_STATIC: mjtCatBitValue<1>, mjCAT_DYNAMIC: mjtCatBitValue<2>, mjCAT_DECOR: mjtCatBitValue<4>, mjCAT_ALL: mjtCatBitValue<7>};
   mjtColorSpace: {mjCOLORSPACE_AUTO: mjtColorSpaceValue<0>, mjCOLORSPACE_LINEAR: mjtColorSpaceValue<1>, mjCOLORSPACE_SRGB: mjtColorSpaceValue<2>};
-  mjtConDataField: {mjCONDATA_FOUND: mjtConDataFieldValue<0>, mjCONDATA_FORCE: mjtConDataFieldValue<1>, mjCONDATA_TORQUE: mjtConDataFieldValue<2>, mjCONDATA_DIST: mjtConDataFieldValue<3>, mjCONDATA_POS: mjtConDataFieldValue<4>, mjCONDATA_NORMAL: mjtConDataFieldValue<5>, mjCONDATA_TANGENT: mjtConDataFieldValue<6>, mjNCONDATA: mjtConDataFieldValue<7>};
+  mjtConDataField: {mjCONDATA_FOUND: mjtConDataFieldValue<0>, mjCONDATA_FORCE: mjtConDataFieldValue<1>, mjCONDATA_TORQUE: mjtConDataFieldValue<2>, mjCONDATA_DIST: mjtConDataFieldValue<3>, mjCONDATA_POS: mjtConDataFieldValue<4>, mjCONDATA_NORMAL: mjtConDataFieldValue<5>, mjCONDATA_TANGENT: mjtConDataFieldValue<6>, mjCONDATA_LINVEL: mjtConDataFieldValue<7>, mjCONDATA_ANGVEL: mjtConDataFieldValue<8>, mjNCONDATA: mjtConDataFieldValue<9>};
   mjtCone: {mjCONE_PYRAMIDAL: mjtConeValue<0>, mjCONE_ELLIPTIC: mjtConeValue<1>};
   mjtConflict: {mjCONFLICT_WARNING: mjtConflictValue<0>, mjCONFLICT_MERGE: mjtConflictValue<1>, mjCONFLICT_ERROR: mjtConflictValue<2>};
   mjtConstraint: {mjCNSTR_EQUALITY: mjtConstraintValue<0>, mjCNSTR_FRICTION_DOF: mjtConstraintValue<1>, mjCNSTR_FRICTION_TENDON: mjtConstraintValue<2>, mjCNSTR_LIMIT_JOINT: mjtConstraintValue<3>, mjCNSTR_LIMIT_TENDON: mjtConstraintValue<4>, mjCNSTR_CONTACT_FRICTIONLESS: mjtConstraintValue<5>, mjCNSTR_CONTACT_PYRAMIDAL: mjtConstraintValue<6>, mjCNSTR_CONTACT_ELLIPTIC: mjtConstraintValue<7>};
   mjtConstraintState: {mjCNSTRSTATE_SATISFIED: mjtConstraintStateValue<0>, mjCNSTRSTATE_QUADRATIC: mjtConstraintStateValue<1>, mjCNSTRSTATE_LINEARNEG: mjtConstraintStateValue<2>, mjCNSTRSTATE_LINEARPOS: mjtConstraintStateValue<3>, mjCNSTRSTATE_CONE: mjtConstraintStateValue<4>};
   mjtCtrlChart: {mjCHART_EXPMAP: mjtCtrlChartValue<1>, mjCHART_QUAT: mjtCtrlChartValue<2>};
-  mjtCtrlInput: {mjINPUT_POS: mjtCtrlInputValue<1>, mjINPUT_VEL: mjtCtrlInputValue<2>, mjINPUT_FF: mjtCtrlInputValue<4>, mjINPUT_VOLTAGE: mjtCtrlInputValue<8>, mjINPUT_NONE: mjtCtrlInputValue<16>};
+  mjtCtrlInput: {mjINPUT_POS: mjtCtrlInputValue<1>, mjINPUT_VEL: mjtCtrlInputValue<2>, mjINPUT_FF: mjtCtrlInputValue<4>, mjINPUT_VOLTAGE: mjtCtrlInputValue<8>, mjINPUT_NONE: mjtCtrlInputValue<16>, mjINPUT_PRESSURE: mjtCtrlInputValue<32>};
   mjtDataType: {mjDATATYPE_REAL: mjtDataTypeValue<0>, mjDATATYPE_POSITIVE: mjtDataTypeValue<1>, mjDATATYPE_AXIS: mjtDataTypeValue<2>, mjDATATYPE_QUATERNION: mjtDataTypeValue<3>};
   mjtDepthMap: {mjDEPTH_ZERONEAR: mjtDepthMapValue<0>, mjDEPTH_ZEROFAR: mjtDepthMapValue<1>};
   mjtDisableBit: {mjDSBL_CONSTRAINT: mjtDisableBitValue<1>, mjDSBL_EQUALITY: mjtDisableBitValue<2>, mjDSBL_FRICTIONLOSS: mjtDisableBitValue<4>, mjDSBL_LIMIT: mjtDisableBitValue<8>, mjDSBL_CONTACT: mjtDisableBitValue<16>, mjDSBL_SPRING: mjtDisableBitValue<32>, mjDSBL_DAMPER: mjtDisableBitValue<64>, mjDSBL_GRAVITY: mjtDisableBitValue<128>, mjDSBL_CLAMPCTRL: mjtDisableBitValue<256>, mjDSBL_WARMSTART: mjtDisableBitValue<512>, mjDSBL_FILTERPARENT: mjtDisableBitValue<1024>, mjDSBL_ACTUATION: mjtDisableBitValue<2048>, mjDSBL_REFSAFE: mjtDisableBitValue<4096>, mjDSBL_SENSOR: mjtDisableBitValue<8192>, mjDSBL_MIDPHASE: mjtDisableBitValue<16384>, mjDSBL_EULERDAMP: mjtDisableBitValue<32768>, mjDSBL_AUTORESET: mjtDisableBitValue<65536>, mjDSBL_NATIVECCD: mjtDisableBitValue<131072>, mjDSBL_ISLAND: mjtDisableBitValue<262144>, mjDSBL_MULTICCD: mjtDisableBitValue<524288>, mjNDISABLE: mjtDisableBitValue<20>};
   mjtDyn: {mjDYN_NONE: mjtDynValue<0>, mjDYN_INTEGRATOR: mjtDynValue<1>, mjDYN_FILTER: mjtDynValue<2>, mjDYN_FILTEREXACT: mjtDynValue<3>, mjDYN_MUSCLE: mjtDynValue<4>, mjDYN_DCMOTOR: mjtDynValue<5>, mjDYN_PID: mjtDynValue<6>, mjDYN_USER: mjtDynValue<7>};
-  mjtEnableBit: {mjENBL_OVERRIDE: mjtEnableBitValue<1>, mjENBL_ENERGY: mjtEnableBitValue<2>, mjENBL_FWDINV: mjtEnableBitValue<4>, mjENBL_INVDISCRETE: mjtEnableBitValue<8>, mjENBL_SLEEP: mjtEnableBitValue<16>, mjENBL_DIAGEXACT: mjtEnableBitValue<32>, mjENBL_IPC: mjtEnableBitValue<64>, mjNENABLE: mjtEnableBitValue<7>};
+  mjtEmbed: {mjEMBED_FALSE: mjtEmbedValue<0>, mjEMBED_TRUE: mjtEmbedValue<1>, mjEMBED_AUTO: mjtEmbedValue<2>};
+  mjtEnableBit: {mjENBL_OVERRIDE: mjtEnableBitValue<1>, mjENBL_ENERGY: mjtEnableBitValue<2>, mjENBL_FWDINV: mjtEnableBitValue<4>, mjENBL_INVDISCRETE: mjtEnableBitValue<8>, mjENBL_SLEEP: mjtEnableBitValue<16>, mjENBL_DIAGEXACT: mjtEnableBitValue<32>, mjENBL_IPC: mjtEnableBitValue<64>, mjENBL_SPECULATIVE: mjtEnableBitValue<128>, mjNENABLE: mjtEnableBitValue<8>};
   mjtEq: {mjEQ_CONNECT: mjtEqValue<0>, mjEQ_WELD: mjtEqValue<1>, mjEQ_JOINT: mjtEqValue<2>, mjEQ_TENDON: mjtEqValue<3>, mjEQ_FLEX: mjtEqValue<4>, mjEQ_FLEXVERT: mjtEqValue<5>, mjEQ_FLEXSTRAIN: mjtEqValue<6>, mjEQ_DISTANCE: mjtEqValue<7>};
   mjtEvent: {mjEVENT_NONE: mjtEventValue<0>, mjEVENT_MOVE: mjtEventValue<1>, mjEVENT_PRESS: mjtEventValue<2>, mjEVENT_RELEASE: mjtEventValue<3>, mjEVENT_SCROLL: mjtEventValue<4>, mjEVENT_KEY: mjtEventValue<5>, mjEVENT_RESIZE: mjtEventValue<6>, mjEVENT_REDRAW: mjtEventValue<7>, mjEVENT_FILESDROP: mjtEventValue<8>};
+  mjtFlexSection: {mjFLEXSECTION_CIRCLE: mjtFlexSectionValue<0>, mjFLEXSECTION_BOX: mjtFlexSectionValue<1>};
   mjtFlexSelf: {mjFLEXSELF_NONE: mjtFlexSelfValue<0>, mjFLEXSELF_NARROW: mjtFlexSelfValue<1>, mjFLEXSELF_BVH: mjtFlexSelfValue<2>, mjFLEXSELF_SAP: mjtFlexSelfValue<3>, mjFLEXSELF_AUTO: mjtFlexSelfValue<4>};
   mjtFont: {mjFONT_NORMAL: mjtFontValue<0>, mjFONT_SHADOW: mjtFontValue<1>, mjFONT_BIG: mjtFontValue<2>};
   mjtFontScale: {mjFONTSCALE_50: mjtFontScaleValue<50>, mjFONTSCALE_100: mjtFontScaleValue<100>, mjFONTSCALE_150: mjtFontScaleValue<150>, mjFONTSCALE_200: mjtFontScaleValue<200>, mjFONTSCALE_250: mjtFontScaleValue<250>, mjFONTSCALE_300: mjtFontScaleValue<300>};
@@ -3177,26 +3256,29 @@ interface EmbindModule {
   mjtLogLevel: {mjLOG_DEBUG: mjtLogLevelValue<0>, mjLOG_INFO: mjtLogLevelValue<1>, mjLOG_WARNING: mjtLogLevelValue<2>, mjLOG_ERROR: mjtLogLevelValue<3>};
   mjtLogTopic: {mjTOPIC_NONE: mjtLogTopicValue<0>, mjTOPIC_TIME_STP: mjtLogTopicValue<1>, mjTOPIC_TIME_CMP: mjtLogTopicValue<2>, mjTOPIC_SLEEP: mjtLogTopicValue<3>, mjNTOPIC: mjtLogTopicValue<3>};
   mjtMark: {mjMARK_NONE: mjtMarkValue<0>, mjMARK_EDGE: mjtMarkValue<1>, mjMARK_CROSS: mjtMarkValue<2>, mjMARK_RANDOM: mjtMarkValue<3>};
-  mjtMeshBuiltin: {mjMESH_BUILTIN_NONE: mjtMeshBuiltinValue<0>, mjMESH_BUILTIN_SPHERE: mjtMeshBuiltinValue<1>, mjMESH_BUILTIN_HEMISPHERE: mjtMeshBuiltinValue<2>, mjMESH_BUILTIN_CONE: mjtMeshBuiltinValue<3>, mjMESH_BUILTIN_SUPERSPHERE: mjtMeshBuiltinValue<4>, mjMESH_BUILTIN_SUPERTORUS: mjtMeshBuiltinValue<5>, mjMESH_BUILTIN_WEDGE: mjtMeshBuiltinValue<6>, mjMESH_BUILTIN_PLATE: mjtMeshBuiltinValue<7>};
+  mjtMeshBuiltin: {mjMESH_BUILTIN_NONE: mjtMeshBuiltinValue<0>, mjMESH_BUILTIN_SPHERE: mjtMeshBuiltinValue<1>, mjMESH_BUILTIN_HEMISPHERE: mjtMeshBuiltinValue<2>, mjMESH_BUILTIN_CONE: mjtMeshBuiltinValue<3>, mjMESH_BUILTIN_SUPERSPHERE: mjtMeshBuiltinValue<4>, mjMESH_BUILTIN_SUPERTORUS: mjtMeshBuiltinValue<5>, mjMESH_BUILTIN_WEDGE: mjtMeshBuiltinValue<6>, mjMESH_BUILTIN_PLATE: mjtMeshBuiltinValue<7>, mjMESH_BUILTIN_GRID: mjtMeshBuiltinValue<8>, mjMESH_BUILTIN_BOX: mjtMeshBuiltinValue<9>, mjMESH_BUILTIN_CYLINDER: mjtMeshBuiltinValue<10>, mjMESH_BUILTIN_ELLIPSOID: mjtMeshBuiltinValue<11>, mjMESH_BUILTIN_SQUARE: mjtMeshBuiltinValue<12>, mjMESH_BUILTIN_DISC: mjtMeshBuiltinValue<13>};
   mjtMeshInertia: {mjMESH_INERTIA_CONVEX: mjtMeshInertiaValue<0>, mjMESH_INERTIA_EXACT: mjtMeshInertiaValue<1>, mjMESH_INERTIA_LEGACY: mjtMeshInertiaValue<2>, mjMESH_INERTIA_SHELL: mjtMeshInertiaValue<3>};
   mjtMouse: {mjMOUSE_NONE: mjtMouseValue<0>, mjMOUSE_ROTATE_V: mjtMouseValue<1>, mjMOUSE_ROTATE_H: mjtMouseValue<2>, mjMOUSE_MOVE_V: mjtMouseValue<3>, mjMOUSE_MOVE_H: mjtMouseValue<4>, mjMOUSE_ZOOM: mjtMouseValue<5>, mjMOUSE_MOVE_V_REL: mjtMouseValue<6>, mjMOUSE_MOVE_H_REL: mjtMouseValue<7>, mjMOUSE_TURN_V: mjtMouseValue<8>, mjMOUSE_TURN_H: mjtMouseValue<9>};
   mjtObj: {mjOBJ_UNKNOWN: mjtObjValue<0>, mjOBJ_BODY: mjtObjValue<1>, mjOBJ_XBODY: mjtObjValue<2>, mjOBJ_JOINT: mjtObjValue<3>, mjOBJ_DOF: mjtObjValue<4>, mjOBJ_GEOM: mjtObjValue<5>, mjOBJ_SITE: mjtObjValue<6>, mjOBJ_CAMERA: mjtObjValue<7>, mjOBJ_LIGHT: mjtObjValue<8>, mjOBJ_FLEX: mjtObjValue<9>, mjOBJ_MESH: mjtObjValue<10>, mjOBJ_SKIN: mjtObjValue<11>, mjOBJ_HFIELD: mjtObjValue<12>, mjOBJ_TEXTURE: mjtObjValue<13>, mjOBJ_MATERIAL: mjtObjValue<14>, mjOBJ_PAIR: mjtObjValue<15>, mjOBJ_EXCLUDE: mjtObjValue<16>, mjOBJ_EQUALITY: mjtObjValue<17>, mjOBJ_TENDON: mjtObjValue<18>, mjOBJ_ACTUATOR: mjtObjValue<19>, mjOBJ_SENSOR: mjtObjValue<20>, mjOBJ_NUMERIC: mjtObjValue<21>, mjOBJ_TEXT: mjtObjValue<22>, mjOBJ_TUPLE: mjtObjValue<23>, mjOBJ_KEY: mjtObjValue<24>, mjOBJ_PLUGIN: mjtObjValue<25>, mjNOBJECT: mjtObjValue<26>, mjOBJ_FRAME: mjtObjValue<100>, mjOBJ_DEFAULT: mjtObjValue<101>, mjOBJ_MODEL: mjtObjValue<102>};
   mjtOrientation: {mjORIENTATION_QUAT: mjtOrientationValue<0>, mjORIENTATION_AXISANGLE: mjtOrientationValue<1>, mjORIENTATION_XYAXES: mjtOrientationValue<2>, mjORIENTATION_ZAXIS: mjtOrientationValue<3>, mjORIENTATION_EULER: mjtOrientationValue<4>};
+  mjtPassthrough: {mjPASSTHROUGH_NONE: mjtPassthroughValue<0>, mjPASSTHROUGH_TEXTURES: mjtPassthroughValue<1>};
   mjtPertBit: {mjPERT_TRANSLATE: mjtPertBitValue<1>, mjPERT_ROTATE: mjtPertBitValue<2>};
   mjtPluginCapabilityBit: {mjPLUGIN_ACTUATOR: mjtPluginCapabilityBitValue<1>, mjPLUGIN_SENSOR: mjtPluginCapabilityBitValue<2>, mjPLUGIN_PASSIVE: mjtPluginCapabilityBitValue<4>, mjPLUGIN_SDF: mjtPluginCapabilityBitValue<8>};
   mjtProjection: {mjPROJ_PERSPECTIVE: mjtProjectionValue<0>, mjPROJ_ORTHOGRAPHIC: mjtProjectionValue<1>};
   mjtRayDataField: {mjRAYDATA_DIST: mjtRayDataFieldValue<0>, mjRAYDATA_DIR: mjtRayDataFieldValue<1>, mjRAYDATA_ORIGIN: mjtRayDataFieldValue<2>, mjRAYDATA_POINT: mjtRayDataFieldValue<3>, mjRAYDATA_NORMAL: mjtRayDataFieldValue<4>, mjRAYDATA_DEPTH: mjtRayDataFieldValue<5>, mjNRAYDATA: mjtRayDataFieldValue<6>};
-  mjtRndFlag: {mjRND_SHADOW: mjtRndFlagValue<0>, mjRND_WIREFRAME: mjtRndFlagValue<1>, mjRND_REFLECTION: mjtRndFlagValue<2>, mjRND_ADDITIVE: mjtRndFlagValue<3>, mjRND_SKYBOX: mjtRndFlagValue<4>, mjRND_FOG: mjtRndFlagValue<5>, mjRND_HAZE: mjtRndFlagValue<6>, mjRND_DEPTH: mjtRndFlagValue<7>, mjRND_SEGMENT: mjtRndFlagValue<8>, mjRND_IDCOLOR: mjtRndFlagValue<9>, mjRND_CULL_FACE: mjtRndFlagValue<10>, mjNRNDFLAG: mjtRndFlagValue<11>};
+  mjtRndFlag: {mjRND_SHADOW: mjtRndFlagValue<0>, mjRND_WIREFRAME: mjtRndFlagValue<1>, mjRND_REFLECTION: mjtRndFlagValue<2>, mjRND_ADDITIVE: mjtRndFlagValue<3>, mjRND_SKYBOX: mjtRndFlagValue<4>, mjRND_FOG: mjtRndFlagValue<5>, mjRND_HAZE: mjtRndFlagValue<6>, mjRND_DEPTH: mjtRndFlagValue<7>, mjRND_SEGMENT: mjtRndFlagValue<8>, mjRND_IDCOLOR: mjtRndFlagValue<9>, mjRND_CULL_FACE: mjtRndFlagValue<10>, mjRND_POST_PROCESSING: mjtRndFlagValue<11>, mjNRNDFLAG: mjtRndFlagValue<12>};
   mjtSDFType: {mjSDFTYPE_SINGLE: mjtSDFTypeValue<0>, mjSDFTYPE_INTERSECTION: mjtSDFTypeValue<1>, mjSDFTYPE_MIDSURFACE: mjtSDFTypeValue<2>, mjSDFTYPE_COLLISION: mjtSDFTypeValue<3>};
   mjtSameFrame: {mjSAMEFRAME_NONE: mjtSameFrameValue<0>, mjSAMEFRAME_BODY: mjtSameFrameValue<1>, mjSAMEFRAME_INERTIA: mjtSameFrameValue<2>, mjSAMEFRAME_BODYROT: mjtSameFrameValue<3>, mjSAMEFRAME_INERTIAROT: mjtSameFrameValue<4>};
+  mjtScaling: {mjSCALING_SIMILAR: mjtScalingValue<0>, mjSCALING_GEOMETRY: mjtScalingValue<1>};
   mjtSection: {mjSECT_CLOSED: mjtSectionValue<0>, mjSECT_OPEN: mjtSectionValue<1>, mjSECT_FIXED: mjtSectionValue<2>};
   mjtSensor: {mjSENS_TOUCH: mjtSensorValue<0>, mjSENS_ACCELEROMETER: mjtSensorValue<1>, mjSENS_VELOCIMETER: mjtSensorValue<2>, mjSENS_GYRO: mjtSensorValue<3>, mjSENS_FORCE: mjtSensorValue<4>, mjSENS_TORQUE: mjtSensorValue<5>, mjSENS_MAGNETOMETER: mjtSensorValue<6>, mjSENS_RANGEFINDER: mjtSensorValue<7>, mjSENS_CAMPROJECTION: mjtSensorValue<8>, mjSENS_JOINTPOS: mjtSensorValue<9>, mjSENS_JOINTVEL: mjtSensorValue<10>, mjSENS_TENDONPOS: mjtSensorValue<11>, mjSENS_TENDONVEL: mjtSensorValue<12>, mjSENS_ACTUATORPOS: mjtSensorValue<13>, mjSENS_ACTUATORVEL: mjtSensorValue<14>, mjSENS_ACTUATORFRC: mjtSensorValue<15>, mjSENS_JOINTACTFRC: mjtSensorValue<16>, mjSENS_TENDONACTFRC: mjtSensorValue<17>, mjSENS_BALLQUAT: mjtSensorValue<18>, mjSENS_BALLANGVEL: mjtSensorValue<19>, mjSENS_JOINTLIMITPOS: mjtSensorValue<20>, mjSENS_JOINTLIMITVEL: mjtSensorValue<21>, mjSENS_JOINTLIMITFRC: mjtSensorValue<22>, mjSENS_TENDONLIMITPOS: mjtSensorValue<23>, mjSENS_TENDONLIMITVEL: mjtSensorValue<24>, mjSENS_TENDONLIMITFRC: mjtSensorValue<25>, mjSENS_FRAMEPOS: mjtSensorValue<26>, mjSENS_FRAMEQUAT: mjtSensorValue<27>, mjSENS_FRAMEXAXIS: mjtSensorValue<28>, mjSENS_FRAMEYAXIS: mjtSensorValue<29>, mjSENS_FRAMEZAXIS: mjtSensorValue<30>, mjSENS_FRAMELINVEL: mjtSensorValue<31>, mjSENS_FRAMEANGVEL: mjtSensorValue<32>, mjSENS_FRAMELINACC: mjtSensorValue<33>, mjSENS_FRAMEANGACC: mjtSensorValue<34>, mjSENS_SUBTREECOM: mjtSensorValue<35>, mjSENS_SUBTREELINVEL: mjtSensorValue<36>, mjSENS_SUBTREEANGMOM: mjtSensorValue<37>, mjSENS_INSIDESITE: mjtSensorValue<38>, mjSENS_GEOMDIST: mjtSensorValue<39>, mjSENS_GEOMNORMAL: mjtSensorValue<40>, mjSENS_GEOMFROMTO: mjtSensorValue<41>, mjSENS_CONTACT: mjtSensorValue<42>, mjSENS_E_POTENTIAL: mjtSensorValue<43>, mjSENS_E_KINETIC: mjtSensorValue<44>, mjSENS_CLOCK: mjtSensorValue<45>, mjSENS_TACTILE: mjtSensorValue<46>, mjSENS_PLUGIN: mjtSensorValue<47>, mjSENS_USER: mjtSensorValue<48>};
   mjtSleepPolicy: {mjSLEEP_AUTO: mjtSleepPolicyValue<0>, mjSLEEP_AUTO_NEVER: mjtSleepPolicyValue<1>, mjSLEEP_AUTO_ALLOWED: mjtSleepPolicyValue<2>, mjSLEEP_NEVER: mjtSleepPolicyValue<3>, mjSLEEP_ALLOWED: mjtSleepPolicyValue<4>, mjSLEEP_INIT: mjtSleepPolicyValue<5>};
   mjtSleepState: {mjS_STATIC: mjtSleepStateValue<-1>, mjS_ASLEEP: mjtSleepStateValue<0>, mjS_AWAKE: mjtSleepStateValue<1>};
   mjtSolver: {mjSOL_PGS: mjtSolverValue<0>, mjSOL_CG: mjtSolverValue<1>, mjSOL_NEWTON: mjtSolverValue<2>};
   mjtStage: {mjSTAGE_NONE: mjtStageValue<0>, mjSTAGE_POS: mjtStageValue<1>, mjSTAGE_VEL: mjtStageValue<2>, mjSTAGE_ACC: mjtStageValue<3>};
-  mjtState: {mjSTATE_TIME: mjtStateValue<1>, mjSTATE_QPOS: mjtStateValue<2>, mjSTATE_QVEL: mjtStateValue<4>, mjSTATE_ACT: mjtStateValue<8>, mjSTATE_HISTORY: mjtStateValue<16>, mjSTATE_WARMSTART: mjtStateValue<32>, mjSTATE_CTRL: mjtStateValue<64>, mjSTATE_QFRC_APPLIED: mjtStateValue<128>, mjSTATE_XFRC_APPLIED: mjtStateValue<256>, mjSTATE_EQ_ACTIVE: mjtStateValue<512>, mjSTATE_MOCAP_POS: mjtStateValue<1024>, mjSTATE_MOCAP_QUAT: mjtStateValue<2048>, mjSTATE_USERDATA: mjtStateValue<4096>, mjSTATE_PLUGIN: mjtStateValue<8192>, mjNSTATE: mjtStateValue<14>, mjSTATE_PHYSICS: mjtStateValue<30>, mjSTATE_FULLPHYSICS: mjtStateValue<8223>, mjSTATE_USER: mjtStateValue<8128>, mjSTATE_INTEGRATION: mjtStateValue<16383>};
+  mjtState: {mjSTATE_TIME: mjtStateValue<1>, mjSTATE_QPOS: mjtStateValue<2>, mjSTATE_QVEL: mjtStateValue<4>, mjSTATE_ACT: mjtStateValue<8>, mjSTATE_HISTORY: mjtStateValue<16>, mjSTATE_WARMSTART: mjtStateValue<32>, mjSTATE_CTRL: mjtStateValue<64>, mjSTATE_QFRC_APPLIED: mjtStateValue<128>, mjSTATE_XFRC_APPLIED: mjtStateValue<256>, mjSTATE_EQ_ACTIVE: mjtStateValue<512>, mjSTATE_MOCAP_POS: mjtStateValue<1024>, mjSTATE_MOCAP_QUAT: mjtStateValue<2048>, mjSTATE_USERDATA: mjtStateValue<4096>, mjSTATE_PLUGIN: mjtStateValue<8192>, mjSTATE_PLASTIC: mjtStateValue<16384>, mjNSTATE: mjtStateValue<15>, mjSTATE_PHYSICS: mjtStateValue<16414>, mjSTATE_FULLPHYSICS: mjtStateValue<24607>, mjSTATE_USER: mjtStateValue<8128>, mjSTATE_INTEGRATION: mjtStateValue<32767>};
   mjtStereo: {mjSTEREO_NONE: mjtStereoValue<0>, mjSTEREO_QUADBUFFERED: mjtStereoValue<1>, mjSTEREO_SIDEBYSIDE: mjtStereoValue<2>};
+  mjtTendon: {mjTENDON_FIXED: mjtTendonValue<0>, mjTENDON_SPATIAL: mjtTendonValue<1>};
   mjtTexture: {mjTEXTURE_2D: mjtTextureValue<0>, mjTEXTURE_CUBE: mjtTextureValue<1>, mjTEXTURE_SKYBOX: mjtTextureValue<2>};
   mjtTextureRole: {mjTEXROLE_USER: mjtTextureRoleValue<0>, mjTEXROLE_RGB: mjtTextureRoleValue<1>, mjTEXROLE_OCCLUSION: mjtTextureRoleValue<2>, mjTEXROLE_ROUGHNESS: mjtTextureRoleValue<3>, mjTEXROLE_METALLIC: mjtTextureRoleValue<4>, mjTEXROLE_NORMAL: mjtTextureRoleValue<5>, mjTEXROLE_OPACITY: mjtTextureRoleValue<6>, mjTEXROLE_EMISSIVE: mjtTextureRoleValue<7>, mjTEXROLE_RGBA: mjtTextureRoleValue<8>, mjTEXROLE_ORM: mjtTextureRoleValue<9>, mjNTEXROLE: mjtTextureRoleValue<10>};
   mjtTimer: {mjTIMER_STEP: mjtTimerValue<0>, mjTIMER_FORWARD: mjtTimerValue<1>, mjTIMER_INVERSE: mjtTimerValue<2>, mjTIMER_POSITION: mjtTimerValue<3>, mjTIMER_VELOCITY: mjtTimerValue<4>, mjTIMER_ACTUATION: mjtTimerValue<5>, mjTIMER_CONSTRAINT: mjtTimerValue<6>, mjTIMER_ADVANCE: mjtTimerValue<7>, mjTIMER_POS_KINEMATICS: mjtTimerValue<8>, mjTIMER_POS_INERTIA: mjtTimerValue<9>, mjTIMER_POS_COLLISION: mjtTimerValue<10>, mjTIMER_POS_MAKE: mjtTimerValue<11>, mjTIMER_POS_PROJECT: mjtTimerValue<12>, mjTIMER_COL_BROAD: mjtTimerValue<13>, mjTIMER_COL_NARROW: mjtTimerValue<14>, mjNTIMER: mjtTimerValue<15>};
@@ -3472,8 +3554,9 @@ interface EmbindModule {
   mjs_addSkin(_0: MjSpec): MjsSkin | undefined;
   mjs_addTendon(_0: MjSpec, _1: MjsDefault): MjsTendon | undefined;
   mjs_addText(_0: MjSpec): MjsText | undefined;
-  mjs_addTexture(_0: MjSpec): MjsTexture | undefined;
+  mjs_addTexture(_0: MjSpec, _1: MjsDefault): MjsTexture | undefined;
   mjs_addTuple(_0: MjSpec): MjsTuple | undefined;
+  mjs_adoptInertial(_0: MjsBody, _1: MjVFS): number;
   mjs_asActuator(_0: MjsElement): MjsActuator | undefined;
   mjs_asBody(_0: MjsElement): MjsBody | undefined;
   mjs_asCamera(_0: MjsElement): MjsCamera | undefined;
@@ -3498,6 +3581,7 @@ interface EmbindModule {
   mjs_asText(_0: MjsElement): MjsText | undefined;
   mjs_asTexture(_0: MjsElement): MjsTexture | undefined;
   mjs_asTuple(_0: MjsElement): MjsTuple | undefined;
+  mjs_dedupAssets(_0: MjSpec): number;
   mjs_defaultActuator(_0: MjsActuator): void;
   mjs_defaultBody(_0: MjsBody): void;
   mjs_defaultCamera(_0: MjsCamera): void;
@@ -3524,8 +3608,10 @@ interface EmbindModule {
   mjs_defaultTexture(_0: MjsTexture): void;
   mjs_defaultTuple(_0: MjsTuple): void;
   mjs_delete(_0: MjSpec, _1: MjsElement): number;
+  mjs_discardVisual(_0: MjSpec, _1: MjVFS): number;
   mjs_firstChild(_0: MjsBody, _1: mjtObj, _2: number): MjsElement | undefined;
   mjs_firstElement(_0: MjSpec, _1: mjtObj): MjsElement | undefined;
+  mjs_fuseStatic(_0: MjSpec, _1: MjVFS): number;
   mjs_getCompiler(_0: MjsElement): MjsCompiler | undefined;
   mjs_getDefault(_0: MjsElement): MjsDefault | undefined;
   mjs_getError(_0: MjSpec): string;
@@ -3621,6 +3707,7 @@ interface EmbindModule {
   parseXMLString(_0: EmbindString): MjSpec;
   parseXMLString(_0: EmbindString, _1: MjVFS): MjSpec;
   mj_setLengthRange(_0: MjModel, _1: MjData, _2: number, _3: MjLROpt): number;
+  mj_embedAssets(_0: MjModel): MjModel;
   mj_compile(_0: MjSpec): MjModel;
   mj_compile(_0: MjSpec, _1: MjVFS): MjModel;
   from_xml_string(_0: EmbindString): MjModel;

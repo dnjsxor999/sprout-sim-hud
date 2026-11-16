@@ -360,6 +360,9 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
   line-height: 1.5;
   box-shadow: 0 20px 50px -24px rgba(0, 0, 0, .6);
 }
+/* the scene's own description, first in the notes, under a small label of its own */
+.vp-info li.about { color: var(--text); }
+.vp-info li.about .lbl { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 .cams { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 4px; pointer-events: auto; }
 .cams button {
   height: 24px;
@@ -650,6 +653,8 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
 .card-meta { margin: 2px 0 0; min-height: 16px; font-size: 11px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card.redecided .card-meta::before { content: 're-decided · '; color: var(--engine-ink); }
 .card.spliced .card-meta::before { content: 'spliced · '; color: var(--engine-ink); }
+/* a track that joined the run (a gaze track beside the hands): one small line under the decision's meta */
+.card-joined { margin: 1px 0 0; font-size: 10.5px; line-height: 14px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0 8px; margin-top: 8px; }
 .field { display: flex; flex-direction: column; gap: 2px; min-width: 0; animation: rise 360ms ease-out backwards; animation-delay: calc(var(--i, 0) * 45ms); }
 .fl { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -699,6 +704,10 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
 .watch.live .wb i:nth-child(3) { animation-delay: 200ms; }
 .watch:not(.live) .wb i { opacity: .3; }
 .watch .wt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a swinging target's report (what the lane's fit sees, when the turn comes, when the hand meets it) wraps once */
+.watch.wrap { align-items: flex-start; }
+.watch.wrap .wb { margin-top: 3px; }
+.watch.wrap .wt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; }
 .watch.intervene { --wd: var(--engine); color: var(--engine-ink); }
 .watch.blink { animation: watch-blink 800ms ease-out; }
 
@@ -749,11 +758,100 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
 /* a changed decision spliced into the running motion: a ring on the track (a follow is a solid diamond); its title is the step */
 .marks i.sm { top: -3px; width: 10px; height: 10px; margin-left: -5px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--jev); background: var(--panel); }
 .pct { width: 34px; text-align: right; font-size: 11px; color: var(--muted); }
+/* a looping run's percentage carries the loop sign: a little more room for it */
+.phase.loop .pct { width: 42px; }
+/* a real-time motion's key moments so far, after its name on the run line ("keep_up · strikes 12") */
+.run .rtc { flex: none; font-size: 12px; color: var(--engine-ink); white-space: nowrap; }
 .pause { margin: 0; font-size: 12px; color: var(--engine-ink); }
+/* a real-time run's last reason for not taking the target: muted, two lines at most, until the next launch */
+.rtwhy {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .block.paused {
   border-color: color-mix(in srgb, var(--engine) 55%, var(--hair));
   background: color-mix(in srgb, var(--engine) 7%, var(--panel));
 }
+
+/* the Score block (hud/score.js): the scorecard's record under the three blocks, indented so that the spine from the
+   Engine to the motion memory runs past it, and closer to the Engine than the blocks are to each other (no wire runs
+   between them); closed it is one header line */
+.block[data-actor="score"] { --a: var(--task); --ink: var(--text); flex: none; margin: -12px 0 0 34px; padding: 8px 12px; }
+.sc-head { cursor: pointer; user-select: none; }
+.sc-head .bt .sub { text-transform: none; letter-spacing: 0; font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
+.sc-head .bt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sc-now { margin-left: auto; flex: none; font-size: 12px; color: var(--text); white-space: nowrap; }
+.sc-now.ok { color: var(--ok-ink); }
+.sc-now.fail { color: var(--fail-ink); }
+.sc-caret { flex: none; width: 10px; font-size: 10px; color: var(--faint); text-align: center; }
+.sc-body { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; min-width: 0; }
+.sc-task { margin: 0; font-size: 12.5px; line-height: 1.4; }
+.sc-rules { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 0; font-size: 11.5px; line-height: 1.4; }
+.sc-rules dt { padding-top: 2px; }
+.sc-rules dd {
+  margin: 0;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sc-trials-head { margin-top: 2px; }
+.sc-count { font-size: 10.5px; color: var(--faint); }
+.sc-none { margin: 0; font-size: 11.5px; color: var(--faint); }
+.sc-trials, .sc-sub { margin: 0; padding: 0; list-style: none; }
+/* the trials so far: five lines at a time, the newest at the bottom, as in the feed */
+.sc-trials { max-height: calc(19px * 5); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--hair-2) transparent; }
+.sc-line { display: grid; grid-template-columns: 14px minmax(0, 1fr); align-items: start; }
+.sc-line.grp > .sc-sub { grid-column: 1 / -1; padding-left: 14px; }
+.sc-tog {
+  width: 14px; height: 19px; padding: 0; border: 0; background: transparent; color: var(--faint); font-size: 10px; cursor: pointer;
+}
+.sc-tog:hover { color: var(--text); }
+.sc-seek {
+  display: grid;
+  grid-template-columns: 48px 12px auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  width: 100%;
+  height: 19px;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.sc-seek:hover { background: var(--panel-3); }
+.sc-seek time { font-size: 10.5px; color: var(--faint); text-align: right; white-space: nowrap; }
+.sc-seek .mk { font-style: normal; font-size: 11px; text-align: center; color: var(--faint); }
+.sc-line[data-ok="true"] > .sc-seek .mk { color: var(--ok-ink); }
+.sc-line[data-ok="false"] > .sc-seek .mk { color: var(--fail-ink); }
+.sc-seek .lb { font-size: 11px; color: var(--text); white-space: nowrap; }
+.sc-seek .fx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.sc-line.sub .sc-seek .lb { color: var(--muted); }
+.sc-result { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+/* after the end the result holds the pass rule, and the trials take less room */
+.score-block.ended .sc-pass-l, .score-block.ended .sc-pass { display: none; }
+.score-block.ended .sc-trials { max-height: calc(19px * 4); }
+.sc-rhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin: 0; }
+.sc-rv { font-size: 15px; font-weight: 500; color: var(--text); }
+.sc-rl { font-size: 12px; color: var(--muted); }
+.sc-verdict { align-self: center; height: 19px; font-size: 10.5px; }
+.sc-rrule { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+.sc-metrics { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.sc-metrics th { padding: 1px 10px 1px 0; font-weight: 400; color: var(--muted); text-align: left; white-space: nowrap; }
+.sc-metrics td { padding: 1px 0; color: var(--text); text-align: right; overflow-wrap: anywhere; }
+.sc-more summary { font-size: 10.5px; color: var(--faint); cursor: pointer; }
+.sc-more[open] summary { color: var(--text); }
 
 /* a message arriving: the receiving block glows once in the sender's colour */
 .block.recv, .memory.recv { animation: recv 900ms ease-out; }
@@ -865,6 +963,12 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
 .scrub .ticks { position: absolute; left: 0; top: 1px; width: 100%; height: 14px; }
 .tk { stroke-width: 1.5; opacity: .8; }
 .scrub .track { position: absolute; left: 0; right: 0; top: 19px; height: 3px; border-radius: 3px; background: var(--hair-2); }
+/* the scorecard's trials under the track (feed.js setScoreTicks): thin marks, clipped at the playhead */
+.scrub .sticks { position: absolute; left: 0; top: 23px; width: 100%; height: 6px; pointer-events: none; }
+.stk { stroke-width: 1.25; }
+.stk.ok { stroke: var(--ok); }
+.stk.no { stroke: var(--fail); }
+.stk.na { stroke: var(--faint); opacity: .7; }
 .played { height: 100%; width: 0; border-radius: 3px; background: color-mix(in srgb, var(--text) 55%, transparent); }
 .knob {
   position: absolute;
@@ -920,7 +1024,49 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
 }
 .pred.on { color: var(--ok-ink); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
 .pred.on::before { background: var(--ok); }
+/* a component goal's counter (`taken 2/3`): the pill fills as the count grows; its label is as wide as its widest value,
+   so the bar never moves while it counts */
+.pred.counter { overflow: hidden; isolation: isolate; color: var(--muted); }
+.pred.counter .cf {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--text) 15%, transparent);
+  transition: width 240ms ease, background-color 240ms ease;
+}
+.pred.counter.on { color: var(--ok-ink); }
+.pred.counter.on .cf { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.pred.counter .cl { display: inline-block; text-align: left; font-variant-numeric: tabular-nums; }
 .bar .outcome { flex: none; }
+/* the score chip (feed.js): the scorecard's primary at the playhead where the goal pills are; after the end its verdict.
+   A click opens the Score block. */
+.score-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 22px;
+  max-width: min(420px, 100%);
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--hair-2);
+  background: var(--panel-2);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.score-chip:hover { border-color: color-mix(in srgb, var(--text) 30%, transparent); }
+.score-chip .sc-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.score-chip .sc-v { flex: none; color: var(--text); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; text-align: left; }
+.score-chip .sc-m { flex: none; font-size: 11px; }
+.score-chip.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.score-chip.ok .sc-m, .score-chip.ok .sc-v { color: var(--ok-ink); }
+.score-chip.fail { border-color: color-mix(in srgb, var(--fail) 50%, transparent); background: color-mix(in srgb, var(--fail) 10%, transparent); }
+.score-chip.fail .sc-m, .score-chip.fail .sc-v { color: var(--fail-ink); }
 
 .feed-wrap { position: relative; border-top: 1px solid var(--hair); padding-top: 4px; }
 .feed {
@@ -948,6 +1094,8 @@ button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-v
 .ln:last-child .tx { color: var(--text); }
 .ln[data-tone="fail"] .tx { color: var(--fail-ink); }
 .ln[data-tone="ok"] .tx { color: var(--ok-ink); }
+/* a quiet line (a pan toss's shake): there, but it does not ask for attention, even as the newest */
+.ln[data-tone="quiet"] .tx, .ln[data-tone="quiet"]:last-child .tx { color: var(--faint); }
 .feed-empty { padding: 0 2px; line-height: 20px; color: var(--faint); }
 .feed-jump {
   position: absolute;

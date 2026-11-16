@@ -3,9 +3,9 @@
 // the simulator stays the only authority, and the browser only computes where every geom of the same model is for
 // the qpos it is given. On top of the mirror sit the plan overlays of the running motion and object dragging.
 //
-//   const vp = await createViewport(container, {theme: 'dark'});
+//   const vp = await createViewport(container, {theme: 'dark', view: {preset: 'side', az: 60, el: 20, dist: 3}});
 //   await vp.loadModel(arrayBuffer);   // -> {nq, ngeom, nbody, nmesh, derivedScene}
-//   vp.applyScene(scene); vp.setState(qpos); vp.setPlan(plan); vp.setProgress(phase);
+//   vp.applyScene(scene); vp.setState(qpos); vp.setPlan(plan); vp.setProgress(phase); vp.setSwing({path, meeting});
 //   vp.applyWorldRow(row); vp.restoreWorld(scene);   // gates and moved region markers (section 4.2)
 //   vp.highlightObject(name); vp.onDragObject(cb); vp.setInteractive(bool);
 //   vp.cameraPreset('default' | 'front' | 'side' | 'top'); vp.frameScene(); vp.resize(); vp.setTheme(t); vp.dispose();
@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { classifyGeoms, deriveScene, getMujoco, meshArrays, openModel, robotRoot } from './meshes.js';
 import { geomLook, isDefaultLook, matteRoughness, projectedUVs, readLook, textureRGBA } from './materials.js';
-import { PlanOverlay } from './overlays.js';
+import { PlanOverlays, SwingOverlay } from './overlays.js';
 import { ObjectDrag } from './drag.js';
 
 /** Page colours (section 8.1) and the scene tones that go with them: a floor a shade off the background so shadows
@@ -84,12 +84,37 @@ const PRESETS = Object.freeze({
   top: { az: 180, el: 87 },
 });
 
+/** A scene's dressed set (assets/papers/sets/<theme>: geoms named `set/...`, furniture attached as `set_<piece>/...`)
+ * is the room around the station, not part of it: it never enters the camera's framing, or a dressed scene without a
+ * table would be framed on the whole room and show the robot a few dozen pixels tall. */
+const SET_GEOM = /^set[_/]/;
+/** The set's walls are one-sided quads facing into the room, and the key light stands outside the stage wall at the
+ * robot's right: three.js renders a front-side material's back faces into the shadow map, so such a wall would throw a
+ * dark parallelogram across the floor. Walls, their baseboards and their cut tops cast no shadow. */
+const SET_NO_SHADOW = /^set\/(wall|baseboard|cap)/;
+/** A set brings its own floor (the slab): the page's grid would only bleed through it, so it is not drawn. */
+const SET_FLOOR = /^set\/slab/;
+
 /** An object counts as standing on a surface when its bottom is within this height of the surface's top. */
 const SURFACE_TOL_M = 0.05;
 /** A primitive plane without a size is infinite in MuJoCo; it is drawn this large (half-size, metres). */
 const INFINITE_PLANE_HALF = 30;
 
-const DEFAULTS = Object.freeze({ theme: 'dark', interactive: false, resumeMs: 300, liveHz: 10, maxPixelRatio: 2 });
+const DEFAULTS = Object.freeze({ theme: 'dark', interactive: false, resumeMs: 300, liveHz: 10, maxPixelRatio: 2, view: null });
+
+/** The view a page asks for at load (`opts.view`, from the capture parameters ?cam= ?az= ?el= ?dist=): a preset's name
+ * and any of its azimuth and elevation (degrees, relative to the robot's heading like the presets) and the distance
+ * (metres) in place of the preset's own and the fitted one. Null when nothing valid is asked for. */
+function normalizeView(v) {
+  if (!v || typeof v !== 'object') return null;
+  const finite = (x) => (x == null || x === '' ? null : Number.isFinite(Number(x)) ? Number(x) : null);
+  const out = { preset: PRESETS[v.preset] ? v.preset : null, az: finite(v.az), el: finite(v.el), dist: finite(v.dist),
+    target: Array.isArray(v.target) && v.target.length >= 3 && v.target.slice(0, 3).every((x) => finite(x) != null)
+      ? v.target.slice(0, 3).map(Number) : null };
+  if (out.el != null) out.el = clamp(out.el, -89, 89);
+  if (out.dist != null && !(out.dist > 0)) out.dist = null;
+  return out.preset || out.az != null || out.el != null || out.dist != null || out.target ? out : null;
+}
 
 const deg = THREE.MathUtils.degToRad;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -212,6 +237,9 @@ class Viewport {
     this.table = null;
     this.surfaces = [];
     this.floorZ = 0;
+    this.ownFloor = false;         // the model brings its own floor (a set's slab): the grid is not drawn
+    this.view = normalizeView(this.opts.view);
+    this.sceneView = null;         // the scene's own default view (the scene dict's `view`: the preset's `web_view`)
     this.highlighted = null;
     this.hovered = null;
     this._dragCb = null;
@@ -222,6 +250,9 @@ class Viewport {
     this._shadowCenter = null;
     this._shadowHalf = 1.5;
     this._size = [0, 0];
+    // the size the camera's view is composed for (see resize): the size at the last framing or window resize
+    this._ref = null;
+    this._windowResized = false;
 
     // Start fetching and compiling the WASM now; loadModel awaits the same promise and reports a failure there.
     getMujoco().catch(() => {});
@@ -323,12 +354,20 @@ class Viewport {
     this._ringFor = null;
     scene.add(this.ring);
 
-    this.overlay = new PlanOverlay(scene, { theme: this.theme, reducedMotion: this.reducedMotion });
+    // both arms' plans (a two-handed motion carries the second arm's under `second`)
+    this.overlay = new PlanOverlays(scene, { theme: this.theme, reducedMotion: this.reducedMotion });
+    // a swinging target's predicted arc and the planned meeting (the real-time lane's, C-6)
+    this.swing = new SwingOverlay(scene);
     this.drag = new ObjectDrag(this, { liveHz: this.opts.liveHz });
     this._placeLight(new THREE.Vector3(0.3, 0, 0.5), 1.2);
 
     this._ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.resize()) : null;
     if (this._ro) this._ro.observe(container);
+    // a window resize fires before the ResizeObserver of the same frame: the resize it causes composes the view anew
+    this._onWindowResize = () => {
+      this._windowResized = true;
+    };
+    window.addEventListener('resize', this._onWindowResize);
     this.resize();
     this._frame = this._frame.bind(this);
     this._raf = requestAnimationFrame(this._frame);
@@ -350,9 +389,10 @@ class Viewport {
     this._updateMeshes();
     this.floor.position.z = this.floorZ;
     this.grid.position.z = this.floorZ + FLOOR.gridLift;
+    this.grid.visible = !this.ownFloor;
     this.overlay.floorZ = this.floorZ;
     this._userCamera = false;
-    this.cameraPreset('default', { instant: true });
+    this._frameOwnView(true);
     return { nq: mirror.nq, ngeom: mirror.ngeom, nbody: mirror.nbody, nmesh: mirror.nmesh,
       derivedScene: deriveScene(mujoco, mirror.model) };
   }
@@ -385,6 +425,9 @@ class Viewport {
     this.table = null;
     this.surfaces = [];
     this.hovered = null;
+    // the scene's own default view (a preset's `web_view`), which the default preset and the page's own framing use
+    const sv = scene && typeof scene === 'object' ? normalizeView(scene.view) : null;
+    this.sceneView = sv ? { az: sv.az, el: sv.el, dist: sv.dist, target: sv.target } : null;
     if (!scene || !this.mirror) {
       this._applyHighlight();
       return;
@@ -429,7 +472,7 @@ class Viewport {
     this.mirror.refresh();
     this._updateMeshes();
     this._applyHighlight();
-    if (!this._userCamera) this.cameraPreset('default', { instant: !this._renderedSinceFraming });
+    if (!this._userCamera) this._frameOwnView(!this._renderedSinceFraming);
   }
 
   /** Applies a world row (section 4.2): a `scene/gate` or `scene/object_motion` row that carries `geom_id` and `pos`
@@ -467,6 +510,12 @@ class Viewport {
     if (this.overlay.setPlan(plan)) this._dirty = true;
   }
 
+  /** Shows a swinging target's predicted arc `{path, meeting}` (world points; the meeting `[x, y, z]` or null), or
+   * removes it for null. */
+  setSwing(swing) {
+    if (this.swing.set(swing)) this._dirty = true;
+  }
+
   /** Moves the progress marker to phase (0..1) along the plan's path; null hides it. */
   setProgress(phase) {
     if (this.overlay.setProgress(phase)) this._dirty = true;
@@ -500,19 +549,37 @@ class Viewport {
 
   // ---- camera, size, theme --------------------------------------------------------------------------------------
 
-  /** Moves the camera to a named view, fitted to the robot and the table ({instant: true} skips the easing). */
-  cameraPreset(name = 'default', { instant = false } = {}) {
+  /** Moves the camera to a named view, fitted to the robot and the table ({instant: true} skips the easing). `az` and
+   * `el` (degrees, relative to the robot's heading) and `dist` (metres) replace the preset's angles and the fitted
+   * distance when given. The `default` preset of a scene that says its own default view (the scene dict's `view`:
+   * `{az, el, dist, target}`, any of them) takes that view's values first, looking at its `target` instead of the fit's
+   * centre. */
+  cameraPreset(name = 'default', { instant = false, az = null, el = null, dist = null } = {}) {
+    this._compose();
     const preset = PRESETS[name] || PRESETS.default;
+    const own = (PRESETS[name] ? name : 'default') === 'default' ? this.sceneView : null;
+    const pick = (x, y, z) => (Number.isFinite(x) ? x : Number.isFinite(y) ? y : z);
     const { center, radius } = this._fit();
     const heading = this._robotHeading();
-    const dist = this._fitDistance(radius);
-    const position = center.clone().addScaledVector(direction(heading + deg(preset.az), deg(preset.el)), dist);
-    this._flyTo(position, center, instant);
-    this._afterFraming(center, radius, dist);
+    const look = own && own.target ? new THREE.Vector3(...own.target) : center;
+    const d = Number.isFinite(dist) && dist > 0 ? dist : own && own.dist > 0 ? own.dist : this._fitDistance(radius);
+    const a = pick(az, own && own.az, preset.az);
+    const e = pick(el, own && own.el, preset.el);
+    const position = look.clone().addScaledVector(direction(heading + deg(a), deg(e)), d);
+    this._flyTo(position, look, instant);
+    // the key light and its shadows stay on the robot and its station, wherever the camera looks
+    this._afterFraming(center, radius, d);
+  }
+
+  /** Whether the viewport frames with a view of its own (the page's at load, `opts.view`, or the scene's, its `view`):
+   * the page's own framing then stays out of the way of it. */
+  hasOwnView() {
+    return !!this.view || !!this.sceneView;
   }
 
   /** Refits the view to the robot and the table, keeping the direction the camera looks from. */
   frameScene({ instant = false } = {}) {
+    this._compose();
     const { center, radius } = this._fit();
     const dir = this.camera.position.clone().sub(this.controls.target);
     if (dir.lengthSq() < 1e-12) {
@@ -524,16 +591,44 @@ class Viewport {
     this._afterFraming(center, radius, dist);
   }
 
-  /** Matches the drawing buffer to the container (the ResizeObserver calls it; a hidden container is skipped). */
+  /** Matches the drawing buffer to the container (the ResizeObserver calls it; a hidden container is skipped).
+   *
+   * A size change the page makes on its own during a replay (the panel beside the view growing with JEV's steps and
+   * card, the memory strip below gaining a row, a scrollbar coming or going) keeps the scene where it is on screen and
+   * at its scale: the view shows more or less of it at the bottom and the sides instead of zooming. A window resize,
+   * a framing and a camera preset compose the view for the size it has then. */
   resize() {
     const w = Math.floor(this.container.clientWidth);
     const h = Math.floor(this.container.clientHeight);
     if (w <= 0 || h <= 0 || (w === this._size[0] && h === this._size[1])) return;
     this._size = [w, h];
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    this._dirty = true;
+    if (!this._ref || this._windowResized) this._ref = [w, h];
+    this._windowResized = false;
+    this._project();
+    // setSize cleared the drawing buffer: draw now, or the page shows an empty view until the next animation frame
+    this._dirty = false;
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  /** The camera's projection: composed for `_ref`, seen through the current size anchored at the top centre (the
+   * scene keeps its pixel scale and its place under the view's top edge). */
+  _project() {
+    const [w, h] = this._size;
+    const [rw, rh] = this._ref || this._size;
+    if (w === rw && h === rh) {
+      this.camera.aspect = w / h;
+      this.camera.clearViewOffset();
+    } else {
+      this.camera.setViewOffset(rw, rh, (rw - w) / 2, 0, w, h);
+    }
+  }
+
+  /** Composes the view for the size it has now (a framing then fits the scene into it). */
+  _compose() {
+    if (this._size[0] <= 0 || this._size[1] <= 0) return;
+    this._ref = [this._size[0], this._size[1]];
+    this._project();
   }
 
   setTheme(name) {
@@ -557,9 +652,11 @@ class Viewport {
     this._disposed = true;
     cancelAnimationFrame(this._raf);
     if (this._ro) this._ro.disconnect();
+    window.removeEventListener('resize', this._onWindowResize);
     this.drag.dispose();
     this._unloadModel();
     this.overlay.dispose();
+    this.swing.dispose();
     this.controls.dispose();
     this.floor.geometry.dispose();
     this.floorMat.dispose();
@@ -608,6 +705,7 @@ class Viewport {
     grid.material.depthWrite = false;
     grid.material.toneMapped = false;
     grid.name = 'grid';
+    grid.visible = !this.ownFloor;   // a theme change rebuilds the grid: a set's slab still hides it
     this.grid = grid;
     this.scene.add(grid);
   }
@@ -626,6 +724,7 @@ class Viewport {
     const primitives = new Map();
     const projected = new Map();
     this.floorZ = 0;
+    this.ownFloor = geoms.some((g) => g.role === 'world' && SET_FLOOR.test(g.name));
     for (const g of geoms) {
       if (g.role === 'floor') {
         // The viewport's own floor (large, with a grid) stands in for the model's plane, at its height.
@@ -668,7 +767,7 @@ class Viewport {
       const mesh = new THREE.Mesh(geometry, material);
       // MuJoCo computes the world pose of every geom; three.js must not recompose it from position/rotation.
       mesh.matrixAutoUpdate = false;
-      mesh.castShadow = g.kind !== 'plane';
+      mesh.castShadow = g.kind !== 'plane' && !SET_NO_SHADOW.test(g.name);
       mesh.receiveShadow = true;
       mesh.name = g.name;
       mesh.userData = { geom: g.id, body: g.body, role: g.role, object: null, appearance,
@@ -824,9 +923,13 @@ class Viewport {
     this.meshByGeom.clear();
     this._geometries = [];
     this.overlay.clear();
+    this.swing.clear();
     if (this.mirror) this.mirror.dispose();
     this.mirror = null;
     this.robot = null;
+    this.ownFloor = false;
+    this.sceneView = null;
+    if (this.grid) this.grid.visible = true;
     this._dirty = true;
   }
 
@@ -839,7 +942,8 @@ class Viewport {
   }
 
   /** The box the camera frames: the robot, the objects and the table (top and legs, down to the floor); without a
-   * scene dict, every drawn world geom of a sensible size stands in for the table. */
+   * table in the scene dict, every drawn world geom of a sensible size stands in for the table, except a dressed set's
+   * (SET_GEOM: the room around the station). */
   _fit() {
     const box = new THREE.Box3();
     const part = new THREE.Box3();
@@ -851,7 +955,7 @@ class Viewport {
     for (const mesh of this.geomMeshes) {
       const role = mesh.userData.role;
       if (role === 'robot' || role === 'object') box.union(add(mesh));
-      else if (!this.table && role === 'world') {
+      else if (!this.table && role === 'world' && !SET_GEOM.test(mesh.name)) {
         const b = add(mesh);
         // a geom parked under the floor (an open gate the scene dict has not named yet) is not part of the view
         if (b.max.x - b.min.x < 4 && b.max.y - b.min.y < 4 && b.max.z > this.floorZ) box.union(b);
@@ -875,6 +979,17 @@ class Viewport {
     const center = box.getCenter(new THREE.Vector3());
     const radius = Math.max(0.2, box.getBoundingSphere(new THREE.Sphere()).radius);
     return { center, radius };
+  }
+
+  /** The framing the viewport does on its own (a model loaded, a scene applied while the viewer has not moved the
+   * camera): the view the page asked for at load, else the default preset. */
+  _frameOwnView(instant) {
+    const v = this.view;
+    if (!v) {
+      this.cameraPreset('default', { instant });
+      return;
+    }
+    this.cameraPreset(v.preset || 'default', { instant, az: v.az, el: v.el, dist: v.dist });
   }
 
   _fitDistance(radius) {
@@ -1072,7 +1187,9 @@ class Viewport {
 
 /** Creates the viewport inside container (it fills it; give the container a size). The WASM starts loading here and
  * loadModel waits for it. Options: theme ('dark' | 'light'), interactive (false), resumeMs (300: how long a dropped
- * object ignores the stream at most), liveHz (10: the rate of live drag events), maxPixelRatio (2). */
+ * object ignores the stream at most), liveHz (10: the rate of live drag events), maxPixelRatio (2), view (null: the
+ * default preset; `{preset, az, el, dist}`, any of them, sets the camera the viewport frames with on its own, the
+ * buttons and frameScene leave it). */
 export async function createViewport(container, opts = {}) {
   return new Viewport(container, opts);
 }

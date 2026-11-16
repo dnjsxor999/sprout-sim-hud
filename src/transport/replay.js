@@ -10,7 +10,7 @@
 // decider (the engine writes that span only when the answer lands; `holdRows`), so a replay shows the arm standing.
 
 import { isObj, num, clamp } from '../util/format.js';
-import { rowActor, learnedIds, holdRows } from '../model/pipeline.js';
+import { rowActor, learnedIds, holdRows, shutdownRow } from '../model/pipeline.js';
 
 // half speed lets a burst of JEV's decisions be followed; the faster ones skim the waiting
 export const SPEEDS = [0.5, 1, 2, 4];
@@ -89,7 +89,9 @@ export async function loadBundle(url) {
       errors.push(`model: ${e.message}`);
     }
   }
-  return { meta, scene, library: Array.isArray(json.library) ? json.library : [], rows, frames, modelBytes, errors };
+  // the judge's scorecard of the episode (export_episode.py score_of), or null for a bundle without one
+  const score = isObj(json.score) && isObj(json.score.primary) ? json.score : null;
+  return { meta, scene, library: Array.isArray(json.library) ? json.library : [], rows, frames, modelBytes, errors, score };
 }
 
 /** The bundle's library as it stood when the episode began: the motions the recording learned come back at their run end. */
@@ -115,6 +117,22 @@ function upperBound(sorted, x) {
  * `onState({playing, speed})`, `onEnd()`. The app calls `step(nowMs)` once per animation frame; it returns the clock
  * and the mirrored `qpos`.
  */
+/** The time bar's ticks of rows in playing order, `[{t, who}]`: an episode's end closes it until the next start, and the
+ * rows in between that only report the shutdown get none (pipeline.js shutdownRow). In a bundle with a scorecard
+ * (`scored`) the scene machines' ticks are left out: the card's own ticks mark the trials, and only up to the playhead
+ * (feed.js), where these would tell the whole game in advance. */
+function eventTicks(rows, rel, scored = false) {
+  const out = [];
+  let closed = false;
+  rows.forEach((r, i) => {
+    if (r.kind === 'task/episode_start') closed = false;
+    const who = (closed && shutdownRow(r)) || (scored && r.kind === 'scene/component') ? null : rowActor(r);
+    if (who) out.push({ t: rel[i], who });
+    if (r.kind === 'task/episode_end') closed = true;
+  });
+  return out;
+}
+
 export function createPlayer(bundle, handlers = {}) {
   const meta = bundle.meta || {};
   // rows in wall order, the holds among them; a row without a wall stamp keeps its place after the row before it
@@ -177,6 +195,46 @@ export function createPlayer(bundle, handlers = {}) {
     return ta + ((tb - ta) * (t - a)) / (b - a);
   }
 
+  /** The playback clock (seconds of the time bar) at which the sim time `tSim` is reached: the inverse of `simAt`, for
+   * the scorecard's rows, which carry only their sim time (their ticks, and a seek to just before one). The first
+   * moment the sim reaches it; clamped to the bar. */
+  function relAt(tSim) {
+    const ts = num(tSim);
+    if (ts == null) return null;
+    const out = (v) => clamp(v, 0, duration);
+    if (frames && frames.hz && frames.n >= 2) {
+      const { data, stride, n } = frames;
+      if (ts >= data[0] && ts <= data[(n - 1) * stride]) {
+        // the first frame at or past `ts`, and the one before it
+        let lo = 0;
+        let hi = n - 1;
+        while (hi - lo > 1) {
+          const mid = (lo + hi) >> 1;
+          if (data[mid * stride] < ts) lo = mid;
+          else hi = mid;
+        }
+        const ta = data[lo * stride];
+        const tb = data[hi * stride];
+        const f = ts <= ta ? 0 : tb > ta ? (ts - ta) / (tb - ta) : 1;
+        return out(frames.t_rel0 + (lo + clamp(f, 0, 1)) / frames.hz);
+      }
+    }
+    if (!pairs.length) return frames ? out(ts - frames.t_first) : null;
+    const np = pairs.length;
+    if (ts <= pairs[0][1]) return out(pairs[0][0] - (pairs[0][1] - ts));
+    if (ts >= pairs[np - 1][1]) return out(pairs[np - 1][0] + (ts - pairs[np - 1][1]));
+    let lo = 0;
+    let hi = np - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (pairs[mid][1] < ts) lo = mid;
+      else hi = mid;
+    }
+    const [a, ta] = pairs[lo];
+    const [b, tb] = pairs[hi];
+    return out(tb > ta ? a + ((b - a) * (ts - ta)) / (tb - ta) : b);
+  }
+
   function frameAt(tSim) {
     if (!frames || tSim == null) return null;
     const { data, stride, n, nq } = frames;
@@ -224,12 +282,14 @@ export function createPlayer(bundle, handlers = {}) {
     t0,
     duration,
     rows: ordered,
-    /** Event ticks for the time bar: `[{t, who}]` in seconds from the start. */
-    ticks: ordered.map((r, i) => ({ t: rel[i], who: rowActor(r) })).filter((x) => x.who),
+    /** Event ticks for the time bar: `[{t, who}]` in seconds from the start (none for the rows that, after an episode's
+     * end, only report the shutdown: the reducer leaves them out too). */
+    ticks: eventTicks(ordered, rel, !!bundle.score),
     get playing() { return playing; },
     get speed() { return speed; },
     get time() { return tRel; },
     simAt,
+    relAt,
     step(nowMs = performance.now()) {
       // animation-frame and timer stamps can interleave by a few ms: the clock never steps back
       if (playing && last != null) tRel = Math.min(duration, tRel + (Math.max(0, nowMs - last) / 1000) * speed);

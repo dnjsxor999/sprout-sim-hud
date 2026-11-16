@@ -48,6 +48,12 @@ const MORPH_MS = 1200;
  * and fades out from the morph's start, so it is still there while the new curve moves away from it, and it outlasts
  * the morph slightly (the end state is seen next to where the edit was). */
 const TRACE = Object.freeze({ opacity: 0.35, fadeMs: 1500 });
+/** A stream of re-edits: the real-time lane re-aims its motion several times a second (its plans say `rt`), and a
+ * moving object's follows can come as fast. A re-edit that comes within `windowMs` of the motion's previous plan would
+ * land in that plan's hold, which would start again at every re-edit and keep the edited tube hidden for as long as the
+ * stream lasts; so it follows instead: the tube stays, glides from where it is to the new edit in `morphMs` (the last
+ * one wins: a newer re-edit takes over from the curve as drawn, one animation at a time), and leaves no trace. */
+const FOLLOW = Object.freeze({ windowMs: HOLD_MS, morphMs: 180 });
 /** A base plan shorter than this is a turn on the spot, drawn as an arc around the robot. */
 const MIN_STRAIGHT_M = 0.05;
 const MIN_TURN_RAD = 0.05;
@@ -164,7 +170,9 @@ export class PlanOverlay {
     // The edited points on screen: the tube's (mid-morph: the interpolated ones) or, while a re-edit holds, the
     // trace's. A re-edit of the same motion morphs from them; null while no edit of the current motion is shown.
     this._shown = null;
-    this._anim = null; // the running choreography of a new hand plan: {start, from, to, settled, trace}
+    // the running choreography of a new hand plan: {start, hold, morphMs, from, to, settled, trace, traceStart}
+    this._anim = null;
+    this._planAt = null; // when the last hand plan arrived (a re-edit this soon after it follows, see FOLLOW)
     this._marks = null; // the current hand plan's control points and goal ring: {dots, goal}
     this._path = null; // the points the progress marker runs along
     this._phase = null;
@@ -263,32 +271,40 @@ export class PlanOverlay {
   update(now) {
     const a = this._anim;
     if (!a) return false;
-    // Time since the morph began. The frame's stamp can precede the setPlan call that started the choreography,
-    // hence the clamp; during the hold nothing moves, so there is nothing to render.
-    const t = Math.max(0, now - a.start) - HOLD_MS;
-    if (t < 0) return false;
+    let changed = false;
     if (!a.settled) {
-      const u = MORPH_MS > 0 ? Math.min(1, t / MORPH_MS) : 1;
-      const e = easeInOutCubic(u);
-      this._drawTube(a.from.map((p, i) => p.clone().lerp(a.to[i], e)));
-      this.tube.visible = true;
-      if (u >= 1) {
-        // The control points and the goal belong to the finished edit: they appear once the curve has settled.
-        a.settled = true;
-        this._setMarks(true);
+      // Time since the morph began. The frame's stamp can precede the setPlan call that started the choreography,
+      // hence the clamp; during the hold nothing moves, so there is nothing to render.
+      const t = Math.max(0, now - a.start) - a.hold;
+      if (t >= 0) {
+        const u = a.morphMs > 0 ? Math.min(1, t / a.morphMs) : 1;
+        const e = easeInOutCubic(u);
+        this._drawTube(a.from.map((p, i) => p.clone().lerp(a.to[i], e)));
+        this.tube.visible = true;
+        if (u >= 1) {
+          // The control points and the goal belong to the finished edit: they appear once the curve has settled.
+          a.settled = true;
+          this._setMarks(true);
+        }
+        changed = true;
       }
     }
     if (a.trace) {
-      const k = 1 - t / TRACE.fadeMs;
-      if (k > 0) {
-        this._fadeTrace(k);
-      } else {
-        this.trace.visible = false;
-        a.trace = false;
+      // the trace fades from the start of its own re-edit's morph (a follow that came meanwhile keeps that clock)
+      const t = Math.max(0, now - a.traceStart) - HOLD_MS;
+      if (t >= 0) {
+        const k = 1 - t / TRACE.fadeMs;
+        if (k > 0) {
+          this._fadeTrace(k);
+        } else {
+          this.trace.visible = false;
+          a.trace = false;
+        }
+        changed = true;
       }
     }
     if (a.settled && !a.trace) this._anim = null;
-    return true;
+    return changed;
   }
 
   setTheme(theme) {
@@ -340,11 +356,16 @@ export class PlanOverlay {
     }
     // A re-edit of the motion on screen morphs from what is shown (even mid-morph); a new motion grows out of its
     // ghost, which is the edit itself made visible.
-    const same = prev && prev.channel === 'hand' && prev.motion === plan.motion
-      && (prev.arm ?? null) === (plan.arm ?? null) && this._shown;
+    const sameMotion = !!prev && prev.channel === 'hand' && prev.motion === plan.motion
+      && (prev.arm ?? null) === (plan.arm ?? null);
+    const same = sameMotion && !!this._shown;
+    // A re-edit in a stream of them (FOLLOW) glides from the curve on screen; one that comes before anything of the
+    // motion's edit is on screen (its first plan still holding on the ghost) shows its edit at once.
+    const stream = sameMotion && (plan.rt === true || (this._planAt != null && now - this._planAt < FOLLOW.windowMs));
+    this._planAt = now;
     // Reduced motion skips the hold and the morph, a ?still=1 capture would never see them, and a new motion without
     // a ghost has nothing to hold on or grow from: all three show the final state at once.
-    const instant = this.reducedMotion || isStillPage() || (!same && ghost.length < 2);
+    const instant = this.reducedMotion || isStillPage() || (!same && ghost.length < 2) || (stream && !same);
 
     const ctrl = toPoints(plan.points);
     while (this.points.length < ctrl.length) {
@@ -371,6 +392,17 @@ export class PlanOverlay {
       return;
     }
     const from = resample(same ? this._shown : ghost, edited.length);
+    if (stream) {
+      // The tube stays and glides to the new edit; its control points and goal ring move with it at once. A trace an
+      // earlier re-edit left keeps fading on its own clock.
+      const a = this._anim;
+      const trace = !!a && a.trace;
+      this.tube.visible = true;
+      this._setMarks(true);
+      this._anim = { start: now, hold: 0, morphMs: FOLLOW.morphMs, from, to: edited, settled: false, trace,
+        traceStart: trace ? a.traceStart : now };
+      return;
+    }
     if (same) {
       // What was on screen stays behind as the trace: the tube as drawn (mid-morph too) or, when a re-edit arrives
       // during another one's hold, the trace already there; this._shown holds either and keeps it through the hold.
@@ -385,7 +417,8 @@ export class PlanOverlay {
     // the morph (update()).
     this.tube.visible = false;
     this._setMarks(false);
-    this._anim = { start: now, from, to: edited, settled: false, trace: !!same };
+    this._anim = { start: now, hold: HOLD_MS, morphMs: MORPH_MS, from, to: edited, settled: false, trace: !!same,
+      traceStart: now };
   }
 
   /** Draws the edited tube through points and records them as what is on screen. */
@@ -466,5 +499,147 @@ export class PlanOverlay {
     const k = Math.min(Math.floor(u), path.length - 2);
     this.marker.position.copy(path[k]).lerp(path[k + 1], u - k);
     this.marker.visible = true;
+  }
+}
+
+/** A swinging target's predicted arc (contract H4 section 4: the real-time lane's `predicted_path`, its next period):
+ * faint, dotted, in JEV's teal, a little stronger through what hides it; the meeting the lane plans as a small amber ring
+ * with a dot (where the pads are to meet the thing). Sizes in metres, opacities 0..1. */
+const SWING = Object.freeze({ dash: 0.006, gap: 0.011, opacity: 0.6, xray: 0.22, ring: 0.026, ringTube: 0.0024,
+  dot: 0.0065, ringOpacity: 0.95 });
+
+/**
+ * The arc a swinging target is predicted to follow and the meeting planned on it. `set({path, meeting})`: `path` world
+ * points (at least two), `meeting` `[x, y, z]` or null; `set(null)` removes both. Returns whether anything changed.
+ */
+export class SwingOverlay {
+  constructor(parent) {
+    this.group = new THREE.Group();
+    this.group.name = 'swing-overlay';
+    parent.add(this.group);
+    this.mats = {
+      arc: new THREE.LineDashedMaterial({ color: COLORS.edit, dashSize: SWING.dash, gapSize: SWING.gap, transparent: true,
+        opacity: SWING.opacity, depthWrite: false, toneMapped: false }),
+      arcXray: new THREE.LineDashedMaterial({ color: COLORS.edit, dashSize: SWING.dash, gapSize: SWING.gap, transparent: true,
+        opacity: SWING.xray, depthTest: false, depthWrite: false, toneMapped: false }),
+      ring: new THREE.MeshBasicMaterial({ color: COLORS.engine, transparent: true, opacity: SWING.ringOpacity, toneMapped: false }),
+      ringXray: new THREE.MeshBasicMaterial({ color: COLORS.engine, transparent: true, opacity: XRAY.marker, depthTest: false,
+        depthWrite: false, toneMapped: false }),
+    };
+    this.geos = { ring: new THREE.TorusGeometry(SWING.ring, SWING.ringTube, 8, 48), dot: new THREE.SphereGeometry(SWING.dot, 14, 10) };
+    this.arc = new THREE.Line(new THREE.BufferGeometry(), this.mats.arc);
+    this.arcXray = new THREE.Line(this.arc.geometry, this.mats.arcXray);
+    this.meet = new THREE.Group();
+    const ring = new THREE.Mesh(this.geos.ring, this.mats.ring);
+    const dot = new THREE.Mesh(this.geos.dot, this.mats.ring);
+    addXray(ring, this.mats.ringXray);
+    addXray(dot, this.mats.ringXray);
+    this.meet.add(ring, dot);
+    for (const obj of [this.arc, this.arcXray, this.meet]) {
+      obj.visible = false;
+      obj.renderOrder = 3;
+      this.group.add(obj);
+    }
+    this._key = null;
+  }
+
+  set(swing) {
+    const path = swing && Array.isArray(swing.path) ? toPoints(swing.path) : [];
+    const meet = swing && Array.isArray(swing.meeting) && finiteNumbers(swing.meeting, 3) ? swing.meeting : null;
+    const key = path.length >= 2 ? JSON.stringify([swing.path, meet]) : null;
+    if (key === this._key) return false;
+    this._key = key;
+    if (!key) {
+      this.clear();
+      return true;
+    }
+    // the lane samples the period in at most 24 points: a smooth curve through them reads as the arc it is
+    const pts = path.length >= 3 ? new THREE.CatmullRomCurve3(path, false, 'centripetal').getPoints(4 * path.length) : path;
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    this.arc.geometry.dispose();
+    this.arc.geometry = geo;
+    this.arcXray.geometry = geo;
+    this.arc.computeLineDistances();
+    this.arc.visible = true;
+    this.arcXray.visible = true;
+    this.meet.visible = !!meet;
+    if (meet) this.meet.position.set(+meet[0], +meet[1], +meet[2]);
+    return true;
+  }
+
+  clear() {
+    this._key = null;
+    for (const obj of [this.arc, this.arcXray, this.meet]) obj.visible = false;
+  }
+
+  dispose() {
+    this.clear();
+    this.arc.geometry.dispose();
+    for (const g of Object.values(this.geos)) g.dispose();
+    for (const m of Object.values(this.mats)) m.dispose();
+    this.group.removeFromParent();
+  }
+}
+
+/** The plan of a two-handed motion's second arm (`plan.second`: `{arm, goal, ghost, edited, points, roles, path}` in the
+ * same frames as the top level's), as a plan record of its own, or null when the plan carries none. */
+export function secondPlan(plan) {
+  if (!plan || typeof plan !== 'object' || plan.channel !== 'hand') return null;
+  const sec = plan.second;
+  if (!sec || typeof sec !== 'object' || Array.isArray(sec)) return null;
+  return { ...plan, ...sec, second: null, channel: 'hand', motion: plan.motion, arm: sec.arm ?? 'second' };
+}
+
+/**
+ * The plan overlays of both arms: a plan whose motion moves two hands (`arm: "both"`) keeps the first arm's curves at its
+ * top level and the second's under `second`, and each arm gets an overlay of its own (the ghost, the edited tube, its
+ * points and goal ring, its progress marker on its own path), staged and morphed alike. The API is PlanOverlay's.
+ */
+export class PlanOverlays {
+  constructor(parent, opts = {}) {
+    this.first = new PlanOverlay(parent, opts);
+    this.second = new PlanOverlay(parent, opts);
+  }
+
+  get floorZ() {
+    return this.first.floorZ;
+  }
+
+  set floorZ(z) {
+    this.first.floorZ = z;
+    this.second.floorZ = z;
+  }
+
+  setPlan(plan, now = performance.now()) {
+    const a = this.first.setPlan(plan, now);
+    const b = this.second.setPlan(secondPlan(plan), now);
+    return a || b;
+  }
+
+  setProgress(phase) {
+    const a = this.first.setProgress(phase);
+    const b = this.second.setProgress(phase);
+    return a || b;
+  }
+
+  update(now) {
+    const a = this.first.update(now);
+    const b = this.second.update(now);
+    return a || b;
+  }
+
+  setTheme(theme) {
+    this.first.setTheme(theme);
+    this.second.setTheme(theme);
+  }
+
+  clear() {
+    this.first.clear();
+    this.second.clear();
+  }
+
+  dispose() {
+    this.first.dispose();
+    this.second.dispose();
   }
 }

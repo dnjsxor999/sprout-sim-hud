@@ -7,11 +7,13 @@
 //                                 first bundle of episodes/index.json, else a quiet empty state
 //   ?t=<s> ?speed=0.5|1|2|4 ?autoplay=0   replay start time, speed, start paused
 //   ?theme=light|dark ?debug=1        theme, the error sink
+//   ?cam=default|front|side|top ?az=<deg> ?el=<deg> ?dist=<m>   the camera at load (captures); the buttons work as ever
+//   ?score=open|closed            the Score block at load (otherwise the visitor's last choice, closed at first)
 //
 // The 3-D viewport is optional: if its module or the model cannot load, the page says why in the viewport's place and
 // the HUD runs on the rows alone.
 
-import { initialState, reduce, tick } from './model/pipeline.js';
+import { initialState, reduce, tick, taskShape, swingView } from './model/pipeline.js';
 import { createPanel } from './hud/panel.js';
 import { createMemory } from './hud/memory.js';
 import { createFeed } from './hud/feed.js';
@@ -19,12 +21,15 @@ import { loadBundle, createPlayer, initialLibrary, SPEEDS } from './transport/re
 import { connectLive, createLiveMirror, fetchModel, modelUrlFor, DEFAULT_WS } from './transport/live.js';
 import { boundName, num, clamp, fmtBytes, fmtClock, refName } from './util/format.js';
 import { createRecorder } from './util/recorder.js';
+import { scoreTicks, levelText, pickerScore } from './model/score.js';
 
 const HUD_FRAME_MS = 1000 / 30;     // the HUD redraws at most at 30 Hz; the viewport every animation frame
 const RAF_STALL_MS = 100;           // no animation frame for this long (a hidden tab, a headless capture): a timer
                                     // keeps the clock and the HUD going
 const SEEK_STEP_S = 5;
+const SCORE_SEEK_LEAD_S = 1.0;      // a click on a trial of the Score block replays from this long before it was decided
 const THEME_KEY = 'sprout-hud-theme';
+const SCORE_KEY = 'sprout-hud-score';   // the Score block open or closed, as the visitor left it
 const DROP_SETTLE_MS = 300;
 const HINT_MS = 2600;               // how long a hint raised by the viewport stays
 
@@ -53,12 +58,40 @@ const ui = {
   memory: $('memory'),
 };
 
-const panel = createPanel($('panel'), { stage: ui.stage, viewport: ui.viewport, memory: ui.memory });
+/** The Score block at load: `?score=open|closed`, else the visitor's last choice, else closed (the pipeline's blocks keep
+ * their room; the bar's chip shows the number). */
+function scoreOpenAtLoad() {
+  const q = params.get('score');
+  if (q === 'open' || q === 'closed') return q === 'open';
+  try {
+    return localStorage.getItem(SCORE_KEY) === 'open';
+  } catch {
+    return false;
+  }
+}
+
+const panel = createPanel($('panel'), { stage: ui.stage, viewport: ui.viewport, memory: ui.memory, score: {
+  open: scoreOpenAtLoad(),
+  // a trial's sim time on the time bar, a moment before it was decided (a live run has nothing to seek)
+  onSeek: (tSim) => {
+    if (!player) return;
+    const rel = player.relAt(tSim);
+    if (rel != null) player.seek(Math.max(0, rel - SCORE_SEEK_LEAD_S));
+  },
+  onToggle: (open) => {
+    try {
+      localStorage.setItem(SCORE_KEY, open ? 'open' : 'closed');
+    } catch {
+      /* private mode: the choice lasts for this page only */
+    }
+  },
+} });
 const memory = createMemory(ui.memory);
 const feed = createFeed($('bar'), {
   onToggle: () => player && player.toggle(),
   onSeek: (t) => player && player.seek(t),
   onSpeed: (n) => player && player.setSpeed(n),
+  onScore: () => panel.toggleScore(),
 });
 
 let state = initialState();
@@ -79,6 +112,7 @@ let vpReady = false;           // a model is loaded and mirrored
 let vpError = null;            // why the viewport is unavailable: it stays in the viewport's place
 let lastPlanSeq = -1;
 let lastProgress = -1;
+let lastSwingKey = null;       // what the viewport shows of a swinging target's arc (pipeline.js swingView)
 let lastHighlight;
 const vpWarned = new Set();
 
@@ -128,10 +162,17 @@ function vpCall(name, ...args) {
   }
 }
 
+/** The camera a capture asks for at load: ?cam= names a preset, ?az= ?el= (degrees, from the robot's heading) and ?dist=
+ * (metres) override its values, any subset of them; null without any (the default view, fitted as ever). */
+function viewFromUrl() {
+  const v = { preset: params.get('cam'), az: num(params.get('az')), el: num(params.get('el')), dist: num(params.get('dist')) };
+  return v.preset || v.az != null || v.el != null || v.dist != null ? v : null;
+}
+
 async function initViewport() {
   try {
     const mod = await import('./viewport/viewport.js');
-    vp = await mod.createViewport(ui.canvas, { theme: theme() });
+    vp = await mod.createViewport(ui.canvas, { theme: theme(), view: viewFromUrl() });
     if (typeof vp.onDragObject === 'function') vp.onDragObject(onDrag);
     return true;
   } catch (e) {
@@ -178,11 +219,14 @@ async function loadModelInto(bytes, scene) {
     vpReady = true;
     if (scene) vpCall('applyScene', scene);
     syncWorld();
-    vpCall('frameScene');
+    // a view asked for in the URL is the viewport's own framing already: refitting would keep its direction but not its
+    // distance
+    if (!vpCall('hasOwnView')) vpCall('frameScene');
     vpCall('setTheme', theme());
     note('');
     ui.cams.hidden = false;
     lastPlanSeq = -1;
+    lastSwingKey = null;
     lastHighlight = undefined;
   } catch (e) {
     vpReady = false;
@@ -276,6 +320,9 @@ function headerMeta() {
   const bits = [];
   if (e.scene) bits.push(e.scene);
   if (e.seed != null) bits.push(`seed ${e.seed}`);
+  // the variant the scorecard names (C-4's level of the balls, C-6's swing): a label fixed before the episode began
+  const level = levelText(e.score_card);
+  if (level) bits.push(level);
   if (mode === 'replay' && bundle && bundle.meta.title && ui.picker.hidden) bits.push(bundle.meta.title);
   const text = bits.join(' · ');
   if (ui.epMeta.textContent !== text) ui.epMeta.textContent = text;
@@ -324,6 +371,12 @@ const PAPER_SCENES = [
   ['papers/b2b_clear_access', 'B-2b', 'Clear the access'],
   ['papers/b3_pressure_plate', 'B-3', 'Pressure plate'],
   ['papers/b4_gesture_gates', 'B-4', 'Gesture gates'],
+  ['papers/c1_conveyor_pick', 'C-1', 'Conveyor pick'],
+  ['papers/c2_ball_maze', 'C-2', 'Ball maze'],
+  ['papers/c3_balloon_keepup', 'C-3', 'Balloon keep-up'],
+  ['papers/c4_paddle_return', 'C-4', 'Paddle return'],
+  ['papers/c5_pan_toss', 'C-5', 'Pan toss'],
+  ['papers/c6_banana_swing', 'C-6', 'Banana swing'],
 ];
 const PAPER_RANK = new Map(PAPER_SCENES.map(([scene], i) => [scene, i]));
 
@@ -333,9 +386,13 @@ function paperScene(x) {
   return i == null ? null : PAPER_SCENES[i];
 }
 
-function optionLabel(x) {
+/** An option of the picker. `withScore`: the judge's verdict where the bundle carries a scorecard ("8/10 balls returned
+ * ✓", from the index rebuilt with it) -- left out of the option being replayed, whose closed picker in the header would
+ * otherwise tell the result before the playhead gets there (the chip says it at the end). */
+function optionLabel(x, withScore = true) {
   const dur = num(x.duration_s);
-  const clock = dur != null ? ` · ${fmtClock(dur)}` : '';            // no verdict: the episodes are not judged here
+  const sc = withScore ? pickerScore(x.score) : '';
+  const clock = `${dur != null ? ` · ${fmtClock(dur)}` : ''}${sc ? ` · ${sc}` : ''}`;
   const ps = paperScene(x);
   if (!ps) return `${x.title || x.id}${clock}`;
   const seed = Number.isFinite(Number(x.seed)) ? ` · seed ${x.seed}` : '';
@@ -382,7 +439,7 @@ function fillPicker(list, current) {
   const makeOption = (x) => {
     const o = document.createElement('option');
     o.value = x.id;
-    o.textContent = optionLabel(x);
+    o.textContent = optionLabel(x, x.id !== current);
     if (x.id === current) o.selected = true;
     return o;
   };
@@ -422,23 +479,44 @@ ui.emptyConnect.addEventListener('submit', (e) => {
 });
 
 // ---- replay --------------------------------------------------------------------------------------------------------
-/** The bundle's own notes (what the recording lacks, how its frames were timed) behind a small disclosure. */
-function showNotes(notes) {
+/** The bundle's own notes (what the recording lacks, how its frames were timed) behind a small disclosure; a scene that
+ * describes itself (the scene dict's `description`: what the robot does and which aids it has, in plain words) comes
+ * first, under "about this scene". */
+function showNotes(notes, about = null) {
   const box = $('vp-info');
   const list = Array.isArray(notes) ? notes.filter(Boolean) : [];
-  box.hidden = !list.length;
-  box.querySelector('ul').replaceChildren(...list.map((n) => {
+  const text = typeof about === 'string' && about.trim() ? about.trim() : null;
+  box.hidden = !list.length && !text;
+  const items = list.map((n) => {
     const li = document.createElement('li');
     li.textContent = String(n);
     return li;
-  }));
+  });
+  if (text) {
+    const li = document.createElement('li');
+    li.className = 'about';
+    const lbl = document.createElement('span');
+    lbl.className = 'lbl mono';
+    lbl.textContent = 'about this scene';
+    li.append(lbl, document.createTextNode(text));
+    items.unshift(li);
+  }
+  box.querySelector('ul').replaceChildren(...items);
 }
 
 function seed(s, b) {
   reduce(s, { kind: 'library', items: initialLibrary(b) });
   reduce(s, { kind: 'scene', scene: b.scene || b.meta.scene, seed: b.meta.seed });
+  // the task's pills from the start: a recording's first status row often comes late (the task writes one on a change);
+  // a seek seeds again, so the bundle's shape is read once
+  if (!shapes.has(b)) shapes.set(b, taskShape(b.rows));
+  const shape = shapes.get(b);
+  if (shape) reduce(s, shape);
+  // the judge's scorecard of the whole episode: the chip, the Score block and the ticks reveal it up to the playhead
+  if (b.score) reduce(s, { kind: 'score', card: b.score });
   return s;
 }
+const shapes = new WeakMap();
 
 function rebuild() {
   panel.reset(state);
@@ -457,7 +535,7 @@ async function startReplay(url, vpReady$) {
     return;
   }
   note('');
-  showNotes(bundle.meta.notes);
+  showNotes(bundle.meta.notes, bundle.scene && bundle.scene.description);
   state = seed(initialState(), bundle);
   player = createPlayer(bundle, {
     onRows: (rows) => {
@@ -484,6 +562,7 @@ async function startReplay(url, vpReady$) {
   });
   t0 = player.t0;
   feed.setTicks(player.ticks, player.duration);
+  feed.setScoreTicks(scoreTicks(bundle.score, player.relAt));
   feed.setSpeed(player.speed);
   const speed = num(params.get('speed'));
   if (speed != null && SPEEDS.includes(speed)) player.setSpeed(speed);
@@ -591,8 +670,12 @@ function startLive(url, vpReady$) {
 // ---- the frame loop ------------------------------------------------------------------------------------------------
 function ctx() {
   // `speed` paces the panel's reveal of JEV's steps (a live run plays at 1x)
+  // `relAt`: a scorecard row's sim time on the time bar (a replay; a live run shows its rows' times since the start);
+  // `at_end`: the replay's playhead at the recording's last moment (an episode cut off before its verdict ends there)
+  const replaying = mode === 'replay' && !!player;
   return { t: clock.t, t_wall: clock.t_wall, t0, mode, playing: player ? player.playing : mode === 'live',
-    speed: mode === 'replay' && player ? player.speed : 1 };
+    speed: replaying ? player.speed : 1, relAt: replaying ? player.relAt : null,
+    at_end: replaying && player.duration > 0 && player.time >= player.duration - 1e-3 };
 }
 
 function syncViewport() {
@@ -612,6 +695,13 @@ function syncViewport() {
       lastProgress = f;
       vpCall('setProgress', f);
     }
+  }
+  // a swinging target's predicted arc and the meeting planned on it, while the run that predicts it goes on
+  const sw = swingView(state, clock.t);
+  const swKey = sw ? `${j.swing_seq}|${sw.meeting ? 1 : 0}` : 'none';
+  if (swKey !== lastSwingKey) {
+    lastSwingKey = swKey;
+    vpCall('setSwing', sw);
   }
   // the object the current command is bound to, while JEV decides it or the engine runs it
   const c = state.llm.choice;

@@ -243,13 +243,15 @@ export function createMemory(root) {
       }
       const cands = new Set(st.memory.candidates);
       const active = st.memory.active;
+      // a track that joined the running motion (a gaze track beside the hands) runs too
+      const also = Array.isArray(st.memory.also) ? st.memory.also : [];
       const kept = new Set(added);
-      const sk = `${[...cands].join(',')}|${active}|${added.join(',')}`;
+      const sk = `${[...cands].join(',')}|${active}|${also.join(',')}|${added.join(',')}`;
       if (sk === stateKey) return;
       stateKey = sk;
       for (const [id, e] of els) {
         setClass(e.g, 'cand', cands.has(id));
-        setClass(e.g, 'active', active === id);
+        setClass(e.g, 'active', active === id || also.includes(id));
         setClass(e.g, 'kept', kept.has(id));
       }
     },

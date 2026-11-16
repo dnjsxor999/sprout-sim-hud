@@ -6,7 +6,7 @@
   "seed": 0,
   "outcome": "success",
   "duration_s": 161.395,
-  "bytes": 8766952,
+  "bytes": 19795438,
   "group": "advanced_tasks"
  },
  {
@@ -16,7 +16,7 @@
   "seed": 0,
   "outcome": "failed:timeout",
   "duration_s": 901.856,
-  "bytes": 12589081,
+  "bytes": 23618135,
   "group": "advanced_tasks"
  },
  {
@@ -26,7 +26,7 @@
   "seed": 0,
   "outcome": "failed:object_dropped",
   "duration_s": 630.663,
-  "bytes": 40329883,
+  "bytes": 58696402,
   "group": "advanced_tasks"
  },
  {
@@ -36,7 +36,7 @@
   "seed": 0,
   "outcome": "success",
   "duration_s": 737.949,
-  "bytes": 24372518,
+  "bytes": 38805473,
   "group": "advanced_tasks"
  },
  {
@@ -46,7 +46,7 @@
   "seed": 0,
   "outcome": "failed:timeout",
   "duration_s": 902.634,
-  "bytes": 37122104,
+  "bytes": 53128470,
   "group": "advanced_tasks"
  },
  {
@@ -56,7 +56,7 @@
   "seed": 3,
   "outcome": "success",
   "duration_s": 89.059,
-  "bytes": 8199983,
+  "bytes": 19228470,
   "group": "basic_tasks"
  },
  {
@@ -66,7 +66,7 @@
   "seed": 1,
   "outcome": "success",
   "duration_s": 84.171,
-  "bytes": 8131887,
+  "bytes": 19160374,
   "group": "basic_tasks"
  },
  {
@@ -76,7 +76,7 @@
   "seed": 0,
   "outcome": "success",
   "duration_s": 173.753,
-  "bytes": 8738736,
+  "bytes": 19767225,
   "group": "basic_tasks"
  },
  {
@@ -86,7 +86,7 @@
   "seed": 0,
   "outcome": "success",
   "duration_s": 377.194,
-  "bytes": 31505698,
+  "bytes": 43949826,
   "group": "basic_tasks"
  },
  {
@@ -96,7 +96,7 @@
   "seed": 3,
   "outcome": "failed:object_dropped",
   "duration_s": 539.048,
-  "bytes": 10846259,
+  "bytes": 21874746,
   "group": "interesting"
  },
  {
@@ -106,7 +106,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 143.271,
-  "bytes": 19494690,
+  "bytes": 19497416,
   "group": "paper_sweep_4"
  },
  {
@@ -116,7 +116,7 @@
   "seed": 9004,
   "outcome": "success",
   "duration_s": 76.403,
-  "bytes": 19033034,
+  "bytes": 19035761,
   "group": "paper_sweep_4"
  },
  {
@@ -126,7 +126,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 186.68,
-  "bytes": 19921071,
+  "bytes": 19923797,
   "group": "paper_sweep_4"
  },
  {
@@ -136,7 +136,7 @@
   "seed": 9005,
   "outcome": "success",
   "duration_s": 201.704,
-  "bytes": 20158363,
+  "bytes": 20161089,
   "group": "paper_sweep_4"
  },
  {
@@ -146,7 +146,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 1292.312,
-  "bytes": 43196899,
+  "bytes": 43200174,
   "group": "paper_sweep_4"
  },
  {
@@ -156,7 +156,7 @@
   "seed": 9003,
   "outcome": "success",
   "duration_s": 144.376,
-  "bytes": 19613777,
+  "bytes": 19616503,
   "group": "paper_sweep_4"
  },
  {
@@ -166,7 +166,7 @@
   "seed": 9006,
   "outcome": "success",
   "duration_s": 212.094,
-  "bytes": 20066408,
+  "bytes": 20069134,
   "group": "paper_sweep_4"
  },
  {
@@ -176,7 +176,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 214.482,
-  "bytes": 20282136,
+  "bytes": 20284863,
   "group": "paper_sweep_4"
  },
  {
@@ -186,7 +186,7 @@
   "seed": 9007,
   "outcome": "success",
   "duration_s": 101.661,
-  "bytes": 19242754,
+  "bytes": 19245481,
   "group": "paper_sweep_4"
  },
  {
@@ -196,7 +196,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 155.271,
-  "bytes": 19737570,
+  "bytes": 19740297,
   "group": "paper_sweep_4"
  },
  {
@@ -206,7 +206,7 @@
   "seed": 9008,
   "outcome": "success",
   "duration_s": 78.506,
-  "bytes": 19071774,
+  "bytes": 19074500,
   "group": "paper_sweep_4"
  },
  {
@@ -216,7 +216,7 @@
   "seed": 9003,
   "outcome": "success",
   "duration_s": 247.226,
-  "bytes": 20467502,
+  "bytes": 20470229,
   "group": "paper_sweep_4"
  },
  {
@@ -226,7 +226,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 76.458,
-  "bytes": 19047458,
+  "bytes": 19050184,
   "group": "paper_sweep_4"
  },
  {
@@ -236,7 +236,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 103.523,
-  "bytes": 19277931,
+  "bytes": 19280657,
   "group": "paper_sweep_4"
  },
  {
@@ -246,7 +246,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 123.636,
-  "bytes": 19496680,
+  "bytes": 19499428,
   "group": "paper_sweep_4"
  },
  {
@@ -256,7 +256,7 @@
   "seed": 9003,
   "outcome": "success",
   "duration_s": 123.587,
-  "bytes": 19502585,
+  "bytes": 19505333,
   "group": "paper_sweep_4"
  },
  {
@@ -266,7 +266,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 809.769,
-  "bytes": 23511177,
+  "bytes": 23513914,
   "group": "paper_sweep_4"
  },
  {
@@ -276,7 +276,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 1270.316,
-  "bytes": 26488984,
+  "bytes": 26491721,
   "group": "paper_sweep_4"
  },
  {
@@ -286,7 +286,7 @@
   "seed": 9003,
   "outcome": "success",
   "duration_s": 1147.513,
-  "bytes": 28785402,
+  "bytes": 28788207,
   "group": "paper_sweep_4"
  },
  {
@@ -296,7 +296,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 298.464,
-  "bytes": 46803163,
+  "bytes": 46806576,
   "group": "paper_sweep_4"
  },
  {
@@ -306,7 +306,7 @@
   "seed": 9003,
   "outcome": "success",
   "duration_s": 634.993,
-  "bytes": 50519972,
+  "bytes": 50523385,
   "group": "paper_sweep_4"
  },
  {
@@ -316,7 +316,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 749.083,
-  "bytes": 39051357,
+  "bytes": 39054632,
   "group": "paper_sweep_4"
  },
  {
@@ -326,7 +326,7 @@
   "seed": 9001,
   "outcome": "success",
   "duration_s": 162.796,
-  "bytes": 20922258,
+  "bytes": 20924991,
   "group": "paper_sweep_4"
  },
  {
@@ -336,7 +336,7 @@
   "seed": 9002,
   "outcome": "success",
   "duration_s": 161.608,
-  "bytes": 20892747,
+  "bytes": 20895480,
   "group": "paper_sweep_4"
  },
  {
@@ -346,7 +346,7 @@
   "seed": 9003,
   "outcome": "success",
   "duration_s": 347.49,
-  "bytes": 21760493,
+  "bytes": 21763226,
   "group": "paper_sweep_4"
  },
  {
@@ -356,6 +356,6 @@
   "seed": 3,
   "outcome": "success",
   "duration_s": 119.83,
-  "bytes": 8383949
+  "bytes": 19412447
  }
 ]

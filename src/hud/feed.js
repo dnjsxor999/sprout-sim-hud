@@ -1,13 +1,16 @@
 // The bottom bar (docs/design/WEB_HUD.md sections 8.1 and 8.5): the replay controls (play / pause, speed, a scrubber
 // with the episode's event ticks coloured by actor, the time), or a LIVE indicator with the elapsed time; the task's
-// predicates and outcome; and the event feed, the page's full record and its only scrolling element.
+// progress (its predicates, or a `papers` task's goals with a counter for each component goal), the score chip of an
+// episode with a scorecard (its primary number at the playhead, model/score.js) and the outcome; and the event feed, the
+// page's full record and its only scrolling element.
 
-import { h, s, setText, setAttr, setClass, setHidden } from '../util/dom.js';
+import { h, s, setText, setAttr, setClass, setHidden, setStyle } from '../util/dom.js';
 import { fmtClock, fmtClockTenths, num, clamp } from '../util/format.js';
 import { actorVar, ACTOR_LABEL } from '../util/colors.js';
 import { SPEEDS } from '../transport/replay.js';
+import { taskPills } from '../model/pipeline.js';
+import { scoreView, fmtPrimary } from '../model/score.js';
 
-const PREDICATES = ['in_region', 'at_rest', 'on_surface', 'released'];
 const STICK_PX = 8;   // the feed follows new lines while the viewer is this close to its bottom
 // the speed buttons' faces and keys: half speed is "½×" on the key 0 (there is no "½" key), the others their digit
 const SPEED_FACE = { 0.5: '½×' };
@@ -17,7 +20,8 @@ const ICON_PLAY = 'M7 4.5v11l9-5.5z';
 const ICON_PAUSE = 'M6 4.5h3v11H6zM11 4.5h3v11h-3z';
 
 /**
- * `root`: the bar element. `handlers`: `onToggle()`, `onSeek(t_rel)`, `onSpeed(n)`.
+ * `root`: the bar element. `handlers`: `onToggle()`, `onSeek(t_rel)`, `onSpeed(n)`, `onScore()` (the score chip was
+ * clicked: the panel opens the Score block).
  */
 export function createFeed(root, handlers = {}) {
   const playIcon = s('path', { d: ICON_PLAY });
@@ -30,27 +34,35 @@ export function createFeed(root, handlers = {}) {
         'aria-label': `${n} times speed` }, face);
     }));
   const ticks = s('svg', { class: 'ticks', viewBox: '0 0 1000 14', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+  // the scorecard's trials, under the track: clipped at the playhead, so the bar never tells how the game goes on
+  const sticks = s('svg', { class: 'sticks', viewBox: '0 0 1000 6', preserveAspectRatio: 'none', 'aria-hidden': 'true',
+    hidden: true });
   const played = h('div', { class: 'played' });
   const knob = h('div', { class: 'knob' });
   const tip = h('div', { class: 'tip mono', hidden: true });
   const scrub = h('div', { class: 'scrub', role: 'slider', tabindex: '0', 'aria-label': 'Episode time', 'aria-valuemin': '0' },
-    ticks, h('div', { class: 'track' }, played), knob, tip);
+    ticks, h('div', { class: 'track' }, played), sticks, knob, tip);
   const liveInd = h('div', { class: 'live-ind', hidden: true },
     h('span', { class: 'live-dot', 'aria-hidden': 'true' }), h('span', { class: 'mono' }, 'LIVE'), h('span', { class: 'live-t mono' }));
   const time = h('span', { class: 'time mono' }, '0:00 / 0:00');
-  const preds = h('div', { class: 'preds', 'aria-label': 'Task predicates' },
-    ...PREDICATES.map((p) => h('span', { class: 'pred mono', 'data-pred': p, title: `${p}: false` }, p)));
+  const preds = h('div', { class: 'preds', 'aria-label': 'Task predicates' });
+  // the score chip: the scorecard's primary at the playhead ("balls returned 4/10 balls"), its verdict after the end
+  const chip = h('button', { class: 'score-chip', type: 'button', hidden: true, 'aria-label': 'Score: open the record' },
+    h('span', { class: 'sc-l' }), h('span', { class: 'sc-v mono' }), h('span', { class: 'sc-m mono', hidden: true }));
   const outcome = h('span', { class: 'pill outcome mono', hidden: true });
   const list = h('ol', { class: 'feed', 'aria-label': 'Event feed' });
   const empty = h('li', { class: 'feed-empty' }, 'No events yet.');
   list.append(empty);
   const jump = h('button', { class: 'feed-jump mono', type: 'button', hidden: true }, '↓ latest');
   root.replaceChildren(
-    h('div', { class: 'transport' }, play, speeds, scrub, liveInd, time, h('div', { class: 'spacer' }), preds, outcome),
+    h('div', { class: 'transport' }, play, speeds, scrub, liveInd, time, h('div', { class: 'spacer' }), chip, preds, outcome),
     h('div', { class: 'feed-wrap' }, list, jump));
+  chip.addEventListener('click', () => handlers.onScore?.());
 
   let mode = 'replay';
   let duration = 0;
+  let scored = false;     // the bar carries the scorecard's trial ticks
+  let predsKey = null;
   let lastN = 0;
   let stick = true;
   let dragging = false;
@@ -109,6 +121,58 @@ export function createFeed(root, handlers = {}) {
     setHidden(jump, true);
   });
 
+  /** One pill of the task's progress: a predicate (`goal_0`, `in_region`) or a component goal's counter, whose label
+   * keeps the width of its widest value (`taken 3/3`) so the bar never moves while it counts, and whose fill grows with
+   * the count. */
+  function pillEl(p) {
+    if (p.kind !== 'counter') return h('span', { class: 'pred mono', 'data-pred': p.key, title: `${p.key}: false` }, p.label);
+    return h('span', { class: 'pred counter mono', 'data-pred': p.key },
+      h('i', { class: 'cf', 'aria-hidden': 'true' }),
+      h('span', { class: 'cl', style: { minWidth: `${p.width}ch` } }, p.label));
+  }
+
+  /** The pills from the state: built again only when the set changes (a pill keeps its element while its value moves). */
+  function renderPills(st) {
+    const pills = taskPills(st.episode);
+    const key = pills.map((p) => `${p.kind}:${p.key}:${p.width ?? ''}`).join('|');
+    if (key !== predsKey) {
+      predsKey = key;
+      preds.replaceChildren(...pills.map(pillEl));
+    }
+    pills.forEach((p, i) => {
+      const el = preds.children[i];
+      if (!el) return;
+      setClass(el, 'on', p.on);
+      setAttr(el, 'title', p.title);
+      if (p.kind === 'counter') {
+        setText(el.querySelector('.cl'), p.label);
+        setStyle(el.querySelector('.cf'), 'width', `${(100 * p.frac).toFixed(1)}%`);
+      }
+    });
+  }
+
+  /** The score chip at the playhead (model/score.js scoreView: `ctx.t` is the playhead's sim time): the primary's label and
+   * its running value, after the end the card's value with its verdict; hidden for an episode without a scorecard. The
+   * value keeps the width of its widest form (`10/10 balls`), so the bar does not move while it counts. */
+  function renderChip(st, ctx) {
+    const v = scoreView(st.episode, ctx.t, { atEnd: ctx.at_end === true });
+    setHidden(chip, !v);
+    if (!v) return;
+    setText(el(chip, '.sc-l'), v.label);
+    const value = el(chip, '.sc-v');
+    setText(value, v.text);
+    const of = num(v.primary.of);
+    setStyle(value, 'min-width', of != null ? `${fmtPrimary(of, of, v.primary.unit).length}ch` : null);
+    const mark = el(chip, '.sc-m');
+    const markText = v.mark ? (v.mark === 'passed' ? '✓' : '✗') : '';
+    setHidden(mark, !markText && v.final);
+    setText(mark, `${markText}${v.final ? '' : `${markText ? ' ' : ''}(unfinished)`}`);
+    setClass(chip, 'ok', v.mark === 'passed');
+    setClass(chip, 'fail', v.mark === 'failed');
+    setClass(chip, 'ended', v.ended && !!v.card);
+    setAttr(chip, 'title', `${v.title}\n(click: the record behind the number)`);
+  }
+
   function lineEl(line, t0, animate = true) {
     const rel = line.t_wall != null && t0 != null ? line.t_wall - t0 : null;
     const li = h('li', { class: `ln${animate ? ' new' : ''}`, 'data-who': line.who, 'data-n': String(line.n) },
@@ -162,6 +226,20 @@ export function createFeed(root, handlers = {}) {
         class: `tk tk-${k.who}`, stroke: actorVar(k.who), 'vector-effect': 'non-scaling-stroke',
       })));
     },
+    /** The scorecard's trial ticks `[{t, ok}]` (model/score.js scoreTicks, seconds of the bar): thin marks under the
+     * track, green for a trial that went the player's way, red for one that did not, faint for one that says neither;
+     * shown only up to the playhead (setTime). An empty list (a bundle without a card) leaves the bar as it was. */
+    setScoreTicks(list2) {
+      const items = Array.isArray(list2) ? list2.filter((k) => num(k.t) != null) : [];
+      // an SVG element has no `hidden` property: the attribute is what the stylesheet hides
+      scored = items.length > 0;
+      setAttr(sticks, 'hidden', scored ? null : true);
+      setStyle(sticks, 'clip-path', 'inset(0 100% 0 0)');      // nothing shown until the clock says how far
+      sticks.replaceChildren(...items.map((k) => s('line', {
+        x1: (1000 * k.t) / (duration || 1), x2: (1000 * k.t) / (duration || 1), y1: 0, y2: 6,
+        class: `stk ${k.ok === true ? 'ok' : k.ok === false ? 'no' : 'na'}`, 'vector-effect': 'non-scaling-stroke',
+      })));
+    },
     setPlaying(on) {
       playIcon.setAttribute('d', on ? ICON_PAUSE : ICON_PLAY);
       setAttr(play, 'aria-label', on ? 'Pause' : 'Play');
@@ -177,6 +255,8 @@ export function createFeed(root, handlers = {}) {
         const f = duration ? clamp(t / duration, 0, 1) : 0;
         played.style.width = `${(100 * f).toFixed(2)}%`;
         knob.style.left = `${(100 * f).toFixed(2)}%`;
+        // the trials the playhead has passed, and nothing beyond it
+        if (scored) setStyle(sticks, 'clip-path', `inset(0 ${(100 - 100 * f).toFixed(2)}% 0 0)`);
         setAttr(scrub, 'aria-valuenow', t.toFixed(1));
         setText(time, `${fmtClock(t)} / ${fmtClock(duration)}`);
       } else if (mode === 'live') {
@@ -185,12 +265,8 @@ export function createFeed(root, handlers = {}) {
     },
     render(st, ctx = {}) {
       appendLines(st, ctx, false);
-      const pr = st.episode.predicates || {};
-      for (const p of preds.querySelectorAll('.pred')) {
-        const on = pr[p.dataset.pred] === true;
-        setClass(p, 'on', on);
-        setAttr(p, 'title', `${p.dataset.pred}: ${on ? 'holds' : 'does not hold'}`);
-      }
+      renderPills(st);
+      renderChip(st, ctx);
       const o = st.episode.outcome;
       const status = st.episode.status;
       const showRunning = !o && status && status !== 'idle';

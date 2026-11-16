@@ -10,7 +10,7 @@
     "serve": "python3 scripts/serve.py 8788"
   },
   "devDependencies": {
-    "@mujoco/mujoco": "3.14.0",
+    "@mujoco/mujoco": "4.0.1",
     "three": "0.182.0"
   }
 }
