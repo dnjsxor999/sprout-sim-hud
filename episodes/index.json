@@ -330,6 +330,234 @@
   "group": "group_c"
  },
  {
+  "id": "group_c1_first/c1_conveyor_pick_v005_s9001",
+  "title": "the red can \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9001",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 239.838,
+  "bytes": 26566716,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v005_s9002",
+  "title": "the purple carton \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9002",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9002,
+  "outcome": "failed:timeout",
+  "duration_s": 301.416,
+  "bytes": 30468663,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v005_s9003",
+  "title": "the purple carton \u00b7 steady stream \u00b7 0.05 m/s \u00b7 seed 9003",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9003,
+  "outcome": "failed:timeout",
+  "duration_s": 301.373,
+  "bytes": 26398698,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 6,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v005_s9004",
+  "title": "the yellow carton \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9004",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9004,
+  "outcome": "failed:timeout",
+  "duration_s": 301.39,
+  "bytes": 30041161,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 4,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v005_s9005",
+  "title": "the green bottle \u00b7 bursty stream \u00b7 0.05 m/s \u00b7 seed 9005",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9005,
+  "outcome": "success",
+  "duration_s": 170.494,
+  "bytes": 24237152,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v005_s9006",
+  "title": "the green can \u00b7 bursty stream \u00b7 0.05 m/s \u00b7 seed 9006",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9006,
+  "outcome": "failed:timeout",
+  "duration_s": 301.219,
+  "bytes": 26443328,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 5,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v012_s9007",
+  "title": "the purple carton \u00b7 dense stream \u00b7 0.12 m/s \u00b7 seed 9007",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9007,
+  "outcome": "failed:timeout",
+  "duration_s": 301.402,
+  "bytes": 26619857,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 18,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v012_s9008",
+  "title": "the green bottle \u00b7 dense stream \u00b7 0.12 m/s \u00b7 seed 9008",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9008,
+  "outcome": "success",
+  "duration_s": 101.394,
+  "bytes": 22831410,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 6,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v012_s9009",
+  "title": "the purple bottle \u00b7 steady stream \u00b7 0.12 m/s \u00b7 seed 9009",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9009,
+  "outcome": "success",
+  "duration_s": 52.165,
+  "bytes": 21839166,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 2,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v020_s9007",
+  "title": "the purple carton \u00b7 dense stream \u00b7 0.20 m/s \u00b7 seed 9007",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9007,
+  "outcome": "failed:timeout",
+  "duration_s": 301.325,
+  "bytes": 25809220,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 30,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v020_s9008",
+  "title": "the green bottle \u00b7 dense stream \u00b7 0.20 m/s \u00b7 seed 9008",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9008,
+  "outcome": "success",
+  "duration_s": 42.609,
+  "bytes": 21861827,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 4,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c1_first/c1_conveyor_pick_v020_s9009",
+  "title": "the purple bottle \u00b7 steady stream \u00b7 0.20 m/s \u00b7 seed 9009",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9009,
+  "outcome": "success",
+  "duration_s": 134.724,
+  "bytes": 23388555,
+  "group": "group_c1_first",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 10,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
   "id": "group_c_v2/c1_conveyor_pick_v005_s9001",
   "title": "the red can \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9001",
   "scene": "papers/c1_conveyor_pick",
