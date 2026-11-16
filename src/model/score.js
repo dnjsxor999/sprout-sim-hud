@@ -344,8 +344,8 @@ export function levelText(card) {
 }
 
 /** The score an episode index entry carries (`{label, value, of, unit, better, passed, final}`, written when the index is
- * rebuilt) beside its title in the picker: "8/10 balls returned ✓", "time to solve 29.4 s ✗", "… (unfinished)"; '' for an
- * entry without one. */
+ * rebuilt) beside its title in the picker: "8/10 balls returned", "time to solve 29.4 s", "… (unfinished)"; '' for an
+ * entry without one. The number only: whether it passed is told by the chip and the Score block once the replay ends. */
 export function pickerScore(score) {
   if (!isObj(score) || (score.label == null && score.value == null)) return '';
   const label = str(score.label) ?? 'score';
@@ -353,6 +353,5 @@ export function pickerScore(score) {
   const unit = str(score.unit) ?? '';
   const head = of != null ? `${fmtPrimary(score.value, of, '').trim()} ${label}`
     : `${label} ${fmtPrimary(score.value, null, unit)}`;
-  const mark = score.passed === true ? ' ✓' : score.passed === false ? ' ✗' : '';
-  return `${head}${mark}${score.final === false ? ' (unfinished)' : ''}`;
+  return `${head}${score.final === false ? ' (unfinished)' : ''}`;
 }

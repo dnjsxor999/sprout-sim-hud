@@ -61,8 +61,8 @@ the record formats are described in [docs/design/WEB_HUD.md](../docs/design/WEB_
   "more"). Thin marks under the time bar mark the trials (green: went the player's way, red: did not, faint: neither;
   past forty trials only the green and red ones), and the header's scene line names the card's variant (`level L2`). The
   card is the judge's record of the whole episode, so the chip, the block and the marks show nothing the playhead has not
-  reached. The episode picker shows each scored bundle's result beside its title (`8/10 balls returned ✓`), except for the
-  episode being replayed.
+  reached. The episode picker shows each scored bundle's score beside its title (`8/10 balls returned`, the number
+  without a pass mark), except for the episode being replayed.
 * **The scene's machines** (the conveyor, the maze, the pan toss, the ball launcher, the grip assist, the balloon, the
   banana's swing) say what a viewer cares about in the feed, as World lines (`the target comes round: pass 3`, `pass 3 of
   the target: taken (right hand)`, `toss 3 of 5: 6 turned, 8 of 8 in the pan — 17 points so far`, `ball 4: returned —

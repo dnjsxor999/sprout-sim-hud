@@ -375,6 +375,7 @@ const PAPER_SCENES = [
   ['papers/c2_ball_maze', 'C-2', 'Ball maze'],
   ['papers/c3_balloon_keepup', 'C-3', 'Balloon keep-up'],
   ['papers/c4_paddle_return', 'C-4', 'Paddle return'],
+  ['papers/c4_paddle_serve', 'C-4s', 'Paddle return, served'],
   ['papers/c5_pan_toss', 'C-5', 'Pan toss'],
   ['papers/c6_banana_swing', 'C-6', 'Banana swing'],
 ];
@@ -386,8 +387,8 @@ function paperScene(x) {
   return i == null ? null : PAPER_SCENES[i];
 }
 
-/** An option of the picker. `withScore`: the judge's verdict where the bundle carries a scorecard ("8/10 balls returned
- * ✓", from the index rebuilt with it) -- left out of the option being replayed, whose closed picker in the header would
+/** An option of the picker. `withScore`: the score where the bundle carries a scorecard ("8/10 balls returned", from
+ * the index rebuilt with it) -- left out of the option being replayed, whose closed picker in the header would
  * otherwise tell the result before the playhead gets there (the chip says it at the end). */
 function optionLabel(x, withScore = true) {
   const dur = num(x.duration_s);

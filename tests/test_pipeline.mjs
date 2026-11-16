@@ -28,7 +28,8 @@ import { fileURLToPath } from 'node:url';
 
 import { initialState, reduce, tick, rowActor, learnedIds, menuSummary, holdRows, watchVerdict, changeWords, FEED_MAX,
   EVENTS_MAX, PULSES_MAX, STEPS_MAX, taskPills, taskShape, hudCounters, rtCountText, CLASSIC_PREDICATES, swingArc, swingMeeting,
-  swingView, rtWatchText, SWING_MEET_LINGER_S, missWords, noMeetingWords, meetWhyWords, armedWords } from '../src/model/pipeline.js';
+  swingView, rtWatchText, SWING_MEET_LINGER_S, missWords, noMeetingWords, meetWhyWords, armedWords, RT_PULSE_GAP_S,
+  modelNameOf } from '../src/model/pipeline.js';
 import { SPEEDS, createPlayer } from '../src/transport/replay.js';
 import { engineStatus, engineTag, watchLine, jevBadges, runCountsText, spliceChanged, rtReasonLine } from '../src/hud/panel.js';
 import { pickMimeType, recordingName } from '../src/util/recorder.js';
@@ -1730,13 +1731,13 @@ test('a card kept unfinished reads "(unfinished)"; the picker shows an index ent
   assert.deepEqual([v.text, v.mark, v.final], ['4/10 balls', 'failed', false]);
   assert.match(v.title, /unfinished/);
   assert.equal(pickerScore({ label: 'balls returned', value: 8, of: 10, unit: 'balls', better: 'higher', passed: true,
-    final: true }), '8/10 balls returned ✓');
+    final: true }), '8/10 balls returned');
   assert.equal(pickerScore({ label: 'time to solve', value: 29.4, of: null, unit: 's', better: 'lower', passed: true,
-    final: true }), 'time to solve 29.4 s ✓');
-  assert.equal(pickerScore({ label: 'seconds aloft', value: 61.0, of: 60.0, unit: 's', passed: true }), '61/60 seconds aloft ✓');
+    final: true }), 'time to solve 29.4 s');
+  assert.equal(pickerScore({ label: 'seconds aloft', value: 61.0, of: 60.0, unit: 's', passed: true }), '61/60 seconds aloft');
   assert.equal(pickerScore({ label: 'balls returned', value: 4, of: 10, unit: 'balls', passed: false, final: false }),
-    '4/10 balls returned ✗ (unfinished)');
-  assert.equal(pickerScore({ label: 'time to solve', value: null, of: null, unit: 's', passed: false }), 'time to solve – ✗');
+    '4/10 balls returned (unfinished)');
+  assert.equal(pickerScore({ label: 'time to solve', value: null, of: null, unit: 's', passed: false }), 'time to solve –');
   assert.equal(pickerScore(undefined), '');
   assert.equal(fmtPrimary(5.02, 60, 's'), '5.0/60 s');
   assert.equal(fmtPrimary(null, 10, 'balls'), '–');
@@ -2056,6 +2057,62 @@ test('the reasons\' words: every miss and cause the lane writes, the other arm, 
     'ball 5: missed, never touched (it went off the table) — came 0.17 m left of centre']);
   assert.deepEqual(trialLines(normCard(card), card.trials).slice(2, 5).filter((x) => !x.ok).map((x) => x.fields[0]),
     ['hit, but it went off the table', 'missed: never touched (it went off the table)']);
+});
+
+test('the real-time lane: its re-edits travel the JEV -> engine wire as "re-edited" pulses, one per RT_PULSE_GAP_S', () => {
+  const [s, rows] = rtRun(false);
+  const sent = s.pulses.filter((p) => p.from === 'jev' && p.to === 'engine' && p.label === 're-edited');
+  // ten re-edits 0.2 s apart (1.8 s): the first, then one every 0.75 s of the recording
+  assert.equal(rows.filter((r) => r.trace_kind === 'reedit').length, 10);
+  assert.equal(sent.length, 3);
+  assert.ok(sent.every((p, i) => i === 0 || p.t_wall - sent[i - 1].t_wall >= RT_PULSE_GAP_S - 1e-9));
+  assert.ok(!s.feed.some((l) => /re-edits|re-edit of/.test(l.text)), 'still no line per re-aim');
+  assert.equal(s.jev.reedits, 0, 'and no count on the badge');
+});
+
+test('the real-time lane: a decision by the model decider shows "model" and the model\'s name; the rules stay "rules"', () => {
+  const s = initialState();
+  const dec = { values: { pace: 'auto', side: 'early' }, pace: 'auto', side: 'early', dimensions: ['pace', 'side'], decider: 'decisions',
+    model: 'gpt-6-luna', confidence: { pace: 0.9, side: 0.8 }, min_confidence: 0.8, reason: 'model gpt-6-luna: pace auto p=0.95, side early p=0.90' };
+  reduce(s, { kind: 'reasoning/tool_status', state: 'starting', tool_id: 'jev_execute', call_id: 'm1', t: 9, t_wall: 999,
+    arguments: { motion: 'snatch_side_right', bindings: { hands: 'obj:item_10' } } });
+  reduce(s, trace('decision', { context: 'execute', motion: 'snatch_side_right', arm: 'right', object_ref: 'obj:item_10', t: 10, t_wall: 1000,
+    decision: dec, decider: 'decisions', model: 'gpt-6-luna', rt: true }));
+  assert.equal(s.jev.decision.decider, 'model');
+  assert.equal(s.jev.decision.model_name, 'gpt-6-luna');
+  assert.ok(s.feed.some((l) => /decides snatch_side_right.*· model \(gpt-6-luna\)/.test(l.text)), JSON.stringify(s.feed.map((l) => l.text)));
+  assert.equal(modelNameOf({ decision: { reason: 'model gpt-6-luna: cell clip|0.019|0 p=0.7' }, model: { requests: 2 } }), 'gpt-6-luna');
+  assert.equal(modelNameOf({ decision: { reason: 'rules: the first value of each dimension' } }), null);
+  const r = initialState();
+  reduce(r, trace('decision', { context: 'execute', motion: RT, arm: 'right', object_ref: 'obj:balloon', t: 10, t_wall: 1000,
+    decision: { speed: 'normal', decider: 'rules' }, decider: 'rules', model: null, rt: true }));
+  assert.equal(r.jev.decision.decider, 'rules');
+  assert.equal(r.jev.decision.model_name, null);
+});
+
+test('the real-time lane: the model decider\'s checks are decider checks beside the lane\'s report (a line each, a step for a change)', () => {
+  const [s] = rtRun(true);
+  const lane = { t: 12.5, phase: 0.3, p: 0, intervene: false, why: 'real-time lane: 1 track, 3 strikes', rt: true, stands: true, step_ms: 2.4 };
+  reduce(s, trace('watch', { t: 12.5, t_wall: 1002.5, motion: RT, entry: lane }));
+  const pass = { t: 13, phase: 0.3, requests: 1, wall_s: 0.21, p: 0.1, rt: true, decider: 'decisions', context: 'watch', track: 'hands',
+    intervene: false, stands: true, why: 'the model keeps height mid' };
+  reduce(s, trace('watch', { t: 13, t_wall: 1003, motion: RT, entry: pass }));
+  assert.equal(s.jev.watch.rt, true, 'the lane\'s report keeps the watch line');
+  assert.equal(s.jev.watch_dm.n, 1);
+  assert.ok(s.feed.some((l) => l.text === 'decider check 1 · p 0.10 · decision stands'), JSON.stringify(s.feed.slice(-3).map((l) => l.text)));
+  const line = watchLine(s);
+  assert.ok(/decider check 1 · p 0\.10 · decision stands$/.test(line.text), line.text);
+  const steps0 = s.jev.steps.length;
+  const change = { ...pass, t: 14, p: 0.82, intervene: true, stands: undefined, why: 'the model changes height mid -> low',
+    change: { height: ['mid', 'low'] } };
+  reduce(s, trace('watch', { t: 14, t_wall: 1004, motion: RT, entry: change }));
+  assert.equal(s.jev.steps.length, steps0 + 1);
+  assert.ok(/decider check · p 0\.82 → the model changes height mid -> low/.test(s.jev.steps[s.jev.steps.length - 1].text));
+  assert.equal(s.engine.run.n_intervene, 1);
+  assert.ok(/decider check 2 · p 0\.82 · changed$/.test(watchLine(s).text), watchLine(s).text);
+  const held = { ...pass, t: 15, p: 0.7, held: ['height'], why: 'the model would change height again; held until the motion has had a key moment' };
+  reduce(s, trace('watch', { t: 15, t_wall: 1005, motion: RT, entry: held }));
+  assert.ok(s.feed.some((l) => l.text === 'decider check 3 · p 0.70 · held until a key moment'));
 });
 
 // ---- report -------------------------------------------------------------------------------------------------------------

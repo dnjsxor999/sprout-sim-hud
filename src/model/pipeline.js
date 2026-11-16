@@ -20,6 +20,9 @@ import { scoreHead, cameWords } from './score.js';
 export const FEED_MAX = 500;            // feed lines kept (the feed is the page's only full record)
 export const EVENTS_MAX = 50;           // engine events kept
 export const PULSES_MAX = 40;           // pulses kept for the panel to animate
+// a real-time motion is re-edited several times a second: its re-edits travel the JEV -> engine wire as the standard
+// engine's do, one pulse per this much of the recording (half a pulse's travel: a steady stream, not a blur)
+export const RT_PULSE_GAP_S = 0.75;
 export const TEXT_MAX = 400;            // characters of the LLM's last words
 export const THINK_FEED_MIN_S = 2.0;    // a gap between a tool answer and the next call this long gets a feed line
 export const MARKS_MAX = 64;            // watch / re-edit marks kept on the phase bar
@@ -115,7 +118,7 @@ export function initialState() {
     },
     jev: {
       busy: null, query: null, menu: null, command: null, decision: null, n_redecisions: 0, refusal: null,
-      accepted: null, watch: null, plan: null, plan_seq: 0,
+      accepted: null, watch: null, watch_dm: null, rt_pulse_tw: null, plan: null, plan_seq: 0,
       // the running motion's re-edits: `reedits` counts the follows of a moved object, `splices` the changed decisions
       // spliced in, `chain` the mid-run runs of older recordings; `landing` is the engine's own re-decision that just
       // landed, whose outcome (re-edited, paused, the decision stands) comes with the rows of the same tick
@@ -577,7 +580,8 @@ function spliceStep(s, r, run, tw, t) {
   const named = isObj(r.decision) && r.decision.decider ? (r.decision.decider === 'rules' ? 'rules' : 'model') : null;
   const d = decision ? {
     motion: r.motion ?? null, arm: same ? prev.arm : (run ? run.arm : null), object_ref: r.target ?? (same ? prev.object_ref : null),
-    decision, decider: named ?? (same ? prev.decider : 'rules'), context: r.change.source ?? null, kind: 'splice',
+    decision, decider: named ?? (same ? prev.decider : 'rules'), model_name: modelNameOf(r) ?? (same ? prev.model_name ?? null : null),
+    context: r.change.source ?? null, kind: 'splice',
     change: r.change, n_reachable: null, n_probed: null, insight: same ? prev.insight : null, t_wall: tw,
   } : null;
   if (d) j.decision = d;
@@ -723,7 +727,23 @@ function parseChoice(a, tw) {
 }
 
 function deciderOf(row) {
-  return isObj(row.model) && num(row.model.requests, 0) > 0 ? 'model' : 'rules';
+  if (isObj(row.model) && num(row.model.requests, 0) > 0) return 'model';
+  // a real-time motion's decision names its decider itself (`decider: decisions`: the model decider, asked one choice
+  // per dimension; its exchange is in the decision's evidence, not in a `model` record)
+  const named = row.decider ?? (isObj(row.decision) ? row.decision.decider : null);
+  return row.rt === true && (named === 'decisions' || named === 'model') ? 'model' : 'rules';
+}
+
+/** The model that decided, by name ("gpt-6-luna"): the row's or the decision's `model`, else the name its reason opens
+ * with ("model gpt-6-luna: cell ..."); null for the rules or when no name is recorded. */
+export function modelNameOf(row) {
+  if (!isObj(row)) return null;
+  const d = isObj(row.decision) ? row.decision : {};
+  for (const v of [row.model, isObj(row.model) ? row.model.name : null, d.model]) {
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  const m = /^model ([^\s:]+):/.exec(typeof d.reason === 'string' ? d.reason : '');
+  return m ? m[1] : null;
 }
 
 /**
@@ -953,7 +973,8 @@ function onEpisodeStart(s, r, tw, t) {
   e.quiet_keys = [];
   // a new episode: what the blocks show belongs to the old one; the memory (and what it learned) carries over
   Object.assign(s.jev, { busy: null, query: null, menu: null, command: null, decision: null, n_redecisions: 0,
-    refusal: null, accepted: null, watch: null, reedits: 0, splices: 0, chain: 0, landing: null, plan: null,
+    refusal: null, accepted: null, watch: null, watch_dm: null, rt_pulse_tw: null, reedits: 0, splices: 0, chain: 0,
+    landing: null, plan: null,
     plan_seq: s.jev.plan_seq + 1, steps: [], steps_total: 0, steps_cmd_t_wall: null, swing: null,
     swing_seq: s.jev.swing_seq + (s.jev.swing ? 1 : 0) });
   s.engine.run = null;
@@ -1246,7 +1267,9 @@ function onExecuteResult(s, res, tw, t) {
   const decision = trimDecision(ex.decision);
   j.accepted = { motion, t_wall: tw, duration_s: num(plan.duration_s, num(ex.duration_s)) };
   if (decision && !j.decision) {
-    j.decision = { motion, arm: ex.arm ?? null, object_ref: null, decision, decider: decision.decider ?? null,
+    const by = decision.decider ?? (isObj(ex.decision) ? ex.decision.decider : null);
+    j.decision = { motion, arm: ex.arm ?? null, object_ref: null, decision,
+      decider: by === 'decisions' || by === 'model' ? 'model' : (by ?? null), model_name: modelNameOf({ decision: ex.decision }),
       context: 'execute', kind: 'decision', change: null, n_reachable: null, n_probed: null, insight: null, t_wall: tw };
   }
   const status = isObj(res.status) ? res.status : {};
@@ -1389,7 +1412,8 @@ function onTrace(s, r, tw, t) {
       const prev = j.decision;
       const d = {
         motion: r.motion ?? null, arm: r.arm ?? null, object_ref: r.object_ref ?? null, decision: trimDecision(r.decision),
-        decider: deciderOf(r), context: r.context ?? null, kind: k, change: isObj(r.change) ? r.change : null,
+        decider: deciderOf(r), model_name: deciderOf(r) === 'model' ? modelNameOf(r) : null,
+        context: r.context ?? null, kind: k, change: isObj(r.change) ? r.change : null,
         n_reachable: num(r.n_reachable), n_probed: num(r.n_probed), insight: r.insight ?? null, t_wall: tw,
       };
       // the engine's own re-decision, asked in a job, lands with this trace; one that landed once the grasp had begun
@@ -1415,7 +1439,8 @@ function onTrace(s, r, tw, t) {
       const job = landed ? ` · asked at phase ${fmtP(r.asked_phase)}${lat != null ? `, answered in ${lat.toFixed(1)} s` : ''}`
         + `${num(r.held_s, 0) > 0 ? `, held ${num(r.held_s).toFixed(1)} s` : ''}${late ? ', not applied (the grasp had begun)' : ''}` : '';
       feed(s, 'jev', `${k === 'redecision' ? 're-decides' : 'decides'} ${r.motion ?? ''}${r.object_ref ? ` on ${r.object_ref}` : ''}: `
-        + `${decisionWords(r.decision) || '—'}${ch} · ${deciderOf(r)}${job}`, tw, t);
+        + `${decisionWords(r.decision) || '—'}${ch} · ${deciderOf(r)}`
+        + `${deciderOf(r) === 'model' && modelNameOf(r) ? ` (${modelNameOf(r)})` : ''}${job}`, tw, t);
       return;
     }
     case 'plan': {
@@ -1522,6 +1547,23 @@ function onTrace(s, r, tw, t) {
       }
       let n = 1;
       const rtEntry = e.rt === true;
+      if (rtEntry && (e.decider === 'decisions' || e.decider === 'model')) {
+        // the model decider's check of a real-time run (once a second, in a job): a decider check as a standard run's is --
+        // counted, a feed line, a step when it changed a value -- beside the lane's own report, which keeps the watch line
+        if (run) {
+          run.n_checks = (run.n_checks || 0) + 1;
+          if (e.intervene) run.n_intervene += 1;
+          run.rt_plan = true;
+        }
+        const k = run ? run.n_checks : 1;
+        const verdict = e.intervene ? (e.why ?? 'changed') : e.held ? 'held until a key moment' : e.refused ? 'change not taken'
+          : e.error != null && num(e.p) == null ? 'no answer' : 'decision stands';
+        j.watch_dm = { motion: r.motion ?? null, n: k, p: num(e.p), intervene: !!e.intervene, verdict, why: e.why ?? null,
+          wall_s: num(e.wall_s), t_wall: tw };
+        feed(s, 'jev', withVerdict(`decider check ${k} · p ${fmtP(e.p)}`, verdict), tw, t);
+        if (e.intervene) addStep(s, 'watch', `decider check · p ${fmtP(e.p)} → ${e.why ?? 'changed'}`, tw, t, 'warn');
+        return;
+      }
       if (run) {
         run.n_watch += 1;
         if (e.intervene) run.n_intervene += 1;
@@ -1565,6 +1607,12 @@ function onTrace(s, r, tw, t) {
         // stage of a steer (approach, close, lift, level, tilt): the phase it reports is the run's (a loop's own), and
         // nothing else of it is news (a line, a step, a pulse and a mark per re-edit would bury the rest)
         if (run) anchor(run, r.phase, t, tw);
+        // ... but every one of them is JEV's edit handed to the engine, as a standard run's re-edit is: the same pulse
+        // travels the wire, one per RT_PULSE_GAP_S of the recording (a seek back starts the stream again)
+        if (tw != null && (j.rt_pulse_tw == null || tw - j.rt_pulse_tw >= RT_PULSE_GAP_S || tw < j.rt_pulse_tw)) {
+          j.rt_pulse_tw = tw;
+          pulse(s, 'jev', 'engine', 're-edited', tw);
+        }
         return;
       }
       if (!r.installed) {

@@ -347,8 +347,12 @@ export function watchLine(st) {
   if (w && w.rt) {
     // a real-time motion's lane reports how it goes (its own words, shortened; the whole report in the title): the line
     // stays on its latest report through the run and after it
-    return { text: w.text || 'real-time lane', live, intervene: !!w.intervene, w,
-      title: w.why ? `the real-time lane: ${String(w.why).replace(/^real-time lane:\s*/, '')}` : 'the real-time lane' };
+    // the model decider's latest check of this run (asked once a second beside the lane) closes the line
+    const dm = j.watch_dm && (j.watch_dm.motion === run.motion || (run.motions || []).includes(j.watch_dm.motion)) ? j.watch_dm : null;
+    const check = dm ? ` · decider check ${dm.n} · p ${dm.p != null ? dm.p.toFixed(2) : '-'} · ${dm.intervene ? 'changed' : dm.verdict}` : '';
+    return { text: `${w.text || 'real-time lane'}${check}`, live, intervene: !!w.intervene || !!(dm && dm.intervene), w,
+      title: (w.why ? `the real-time lane: ${String(w.why).replace(/^real-time lane:\s*/, '')}` : 'the real-time lane')
+        + (dm && dm.why ? ` — the decider's latest check: ${dm.why}` : '') };
   }
   let text;
   if (resting) text = 'resting';
@@ -790,7 +794,9 @@ export function createPanel(root, { stage, viewport, memory, score: scoreOpts = 
     setText(el(card, '.card-title'), title);
     setAttr(el(card, '.card-title'), 'title', title || null);
     const conf = decisionConfidence(d.decision);
-    setText(el(card, '.card-meta'), `decider: ${d.decider === 'model' ? 'model' : 'rules'}${conf != null ? ` · conf ${conf.toFixed(2)}` : ''}`);
+    // the decider: the rules, or the decision model by its name when the record gives it ("decider: model · gpt-6-luna")
+    const by = d.decider === 'model' ? `model${d.model_name ? ` · ${d.model_name}` : ''}` : 'rules';
+    setText(el(card, '.card-meta'), `decider: ${by}${conf != null ? ` · conf ${conf.toFixed(2)}` : ''}`);
     setClass(card, 'redecided', d.kind === 'redecision');
     setClass(card, 'spliced', d.kind === 'splice');
     const spliced = spliceChanged(d);
