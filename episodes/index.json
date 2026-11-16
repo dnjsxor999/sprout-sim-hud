@@ -90,6 +90,246 @@
   "group": "basic_tasks"
  },
  {
+  "id": "group_c/c1_conveyor_pick_s9001_claude",
+  "title": "papers/c1_conveyor_pick, seed 9001",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 87.14,
+  "bytes": 22473305,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_s9002_claude",
+  "title": "papers/c1_conveyor_pick, seed 9002",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 62.114,
+  "bytes": 23697567,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_s9003_claude",
+  "title": "papers/c1_conveyor_pick, seed 9003",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 84.198,
+  "bytes": 22617072,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_std_s9001_claude",
+  "title": "standard engine only (no real-time motions), seed 9001",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9001,
+  "outcome": "failed:timeout",
+  "duration_s": 300.936,
+  "bytes": 26011918,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_v012_s9001_claude",
+  "title": "belt 0.12 m/s, seed 9001",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 75.137,
+  "bytes": 22421645,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_v012_s9002_claude",
+  "title": "belt 0.12 m/s, seed 9002",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 45.206,
+  "bytes": 21897229,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_v012_s9003_claude",
+  "title": "belt 0.12 m/s, seed 9003",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 36.308,
+  "bytes": 21625593,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_v020_s9002_claude",
+  "title": "belt 0.20 m/s, seed 9002",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 30.119,
+  "bytes": 21683969,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c1_conveyor_pick_v020_s9003_claude",
+  "title": "belt 0.20 m/s, seed 9003",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 150.655,
+  "bytes": 23516748,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c2_ball_maze_s9001_claude",
+  "title": "papers/c2_ball_maze, seed 9001",
+  "scene": "papers/c2_ball_maze",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 112.209,
+  "bytes": 31976523,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c2_ball_maze_s9002_claude",
+  "title": "papers/c2_ball_maze, seed 9002",
+  "scene": "papers/c2_ball_maze",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 270.698,
+  "bytes": 32655552,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c2_ball_maze_s9003_claude",
+  "title": "papers/c2_ball_maze, seed 9003",
+  "scene": "papers/c2_ball_maze",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 113.409,
+  "bytes": 32020663,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c3_balloon_hands_s9001_claude",
+  "title": "bare hands (one hand), seed 9001",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9001,
+  "outcome": "failed:component_flag",
+  "duration_s": 32.312,
+  "bytes": 33288636,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c3_balloon_hands_s9002_claude",
+  "title": "bare hands (two-hand bump), seed 9002",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9002,
+  "outcome": "failed:component_flag",
+  "duration_s": 46.1,
+  "bytes": 33503999,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c3_balloon_keepup_s9001_claude",
+  "title": "papers/c3_balloon_keepup, seed 9001",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 87.574,
+  "bytes": 35005116,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c3_balloon_keepup_s9002_claude",
+  "title": "papers/c3_balloon_keepup, seed 9002",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 100.362,
+  "bytes": 35085992,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c3_balloon_keepup_s9003_claude",
+  "title": "papers/c3_balloon_keepup, seed 9003",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 89.526,
+  "bytes": 35004009,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c4_paddle_return_s9001_claude",
+  "title": "papers/c4_paddle_return, seed 9001",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 73.411,
+  "bytes": 20913713,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c4_paddle_return_s9002_claude",
+  "title": "papers/c4_paddle_return, seed 9002",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 74.616,
+  "bytes": 20957487,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c4_paddle_return_s9003_claude",
+  "title": "papers/c4_paddle_return, seed 9003",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 66.639,
+  "bytes": 20806694,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c5_pan_toss_lost_s9003_claude",
+  "title": "pieces lost (not completed), seed 9003",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9003,
+  "outcome": "unfinished:player_exit",
+  "duration_s": 147.215,
+  "bytes": 22547491,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c5_pan_toss_s9001_claude",
+  "title": "papers/c5_pan_toss, seed 9001",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 71.528,
+  "bytes": 21418339,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c5_pan_toss_s9002_claude",
+  "title": "papers/c5_pan_toss, seed 9002",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 43.343,
+  "bytes": 21133486,
+  "group": "group_c"
+ },
+ {
+  "id": "group_c/c5_pan_toss_s9003_claude",
+  "title": "papers/c5_pan_toss, seed 9003",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 40.161,
+  "bytes": 21067054,
+  "group": "group_c"
+ },
+ {
   "id": "group_c_v2/c1_conveyor_pick_v005_s9001",
   "title": "the red can \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9001",
   "scene": "papers/c1_conveyor_pick",
