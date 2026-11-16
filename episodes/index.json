@@ -90,6 +90,861 @@
   "group": "basic_tasks"
  },
  {
+  "id": "group_c_v2/c1_conveyor_pick_v005_s9001",
+  "title": "the red can \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9001",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 60.206,
+  "bytes": 23418352,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 1,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v005_s9002",
+  "title": "the blue bottle \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9002",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 66.408,
+  "bytes": 23605820,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 1,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v005_s9003",
+  "title": "the blue bottle \u00b7 steady stream \u00b7 0.05 m/s \u00b7 seed 9003",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 67.407,
+  "bytes": 22830150,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 1,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v005_s9004",
+  "title": "the white can \u00b7 sparse stream \u00b7 0.05 m/s \u00b7 seed 9004",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9004,
+  "outcome": "success",
+  "duration_s": 102.332,
+  "bytes": 26966179,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 1,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v005_s9005",
+  "title": "the orange can \u00b7 bursty stream \u00b7 0.05 m/s \u00b7 seed 9005",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9005,
+  "outcome": "success",
+  "duration_s": 114.411,
+  "bytes": 23155794,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 2,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v005_s9006",
+  "title": "the orange can \u00b7 bursty stream \u00b7 0.05 m/s \u00b7 seed 9006",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9006,
+  "outcome": "success",
+  "duration_s": 176.616,
+  "bytes": 26176603,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v012_s9001",
+  "title": "the red can \u00b7 sparse stream \u00b7 0.12 m/s \u00b7 seed 9001",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 102.309,
+  "bytes": 23141368,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v012_s9002",
+  "title": "the blue bottle \u00b7 sparse stream \u00b7 0.12 m/s \u00b7 seed 9002",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 245.798,
+  "bytes": 25440875,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 7,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v012_s9003",
+  "title": "the blue bottle \u00b7 steady stream \u00b7 0.12 m/s \u00b7 seed 9003",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 67.333,
+  "bytes": 22671009,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v012_s9004",
+  "title": "the white can \u00b7 sparse stream \u00b7 0.12 m/s \u00b7 seed 9004",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9004,
+  "outcome": "success",
+  "duration_s": 87.399,
+  "bytes": 22806270,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v012_s9005",
+  "title": "the orange can \u00b7 bursty stream \u00b7 0.12 m/s \u00b7 seed 9005",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9005,
+  "outcome": "success",
+  "duration_s": 51.2,
+  "bytes": 21826209,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 2,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v012_s9006",
+  "title": "the orange can \u00b7 bursty stream \u00b7 0.12 m/s \u00b7 seed 9006",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9006,
+  "outcome": "success",
+  "duration_s": 76.303,
+  "bytes": 23037205,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 3,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v020_s9007",
+  "title": "the blue bottle \u00b7 dense stream \u00b7 0.20 m/s \u00b7 seed 9007",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9007,
+  "outcome": "success",
+  "duration_s": 113.532,
+  "bytes": 22981442,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 11,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v020_s9009",
+  "title": "the purple bottle \u00b7 steady stream \u00b7 0.20 m/s \u00b7 seed 9009",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9009,
+  "outcome": "failed:timeout",
+  "duration_s": 301.249,
+  "bytes": 26956498,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 24,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c1_conveyor_pick_v020_s9011",
+  "title": "the green bottle \u00b7 sparse stream \u00b7 0.20 m/s \u00b7 seed 9011",
+  "scene": "papers/c1_conveyor_pick",
+  "seed": 9011,
+  "outcome": "success",
+  "duration_s": 158.513,
+  "bytes": 24150615,
+  "group": "group_c_v2",
+  "score": {
+   "label": "passes of the target until it was taken",
+   "value": 8,
+   "of": null,
+   "unit": "passes",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c2_ball_maze_s9001",
+  "title": "maze s2 \u00b7 seed 9001",
+  "scene": "papers/c2_ball_maze",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 108.305,
+  "bytes": 31828186,
+  "group": "group_c_v2",
+  "score": {
+   "label": "time to solve",
+   "value": 106.06,
+   "of": null,
+   "unit": "s",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c2_ball_maze_s9002",
+  "title": "maze s4 \u00b7 seed 9002",
+  "scene": "papers/c2_ball_maze",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 219.6,
+  "bytes": 33594293,
+  "group": "group_c_v2",
+  "score": {
+   "label": "time to solve",
+   "value": 217.76,
+   "of": null,
+   "unit": "s",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c2_ball_maze_s9003",
+  "title": "maze s8 \u00b7 seed 9003",
+  "scene": "papers/c2_ball_maze",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 193.491,
+  "bytes": 32398748,
+  "group": "group_c_v2",
+  "score": {
+   "label": "time to solve",
+   "value": 191.16,
+   "of": null,
+   "unit": "s",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c3_balloon_keepup_s9001",
+  "title": "seed 9001",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 86.485,
+  "bytes": 34968481,
+  "group": "group_c_v2",
+  "score": {
+   "label": "seconds aloft",
+   "value": 61.0,
+   "of": 60.0,
+   "unit": "s",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c3_balloon_keepup_s9002",
+  "title": "seed 9002",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 88.624,
+  "bytes": 35009372,
+  "group": "group_c_v2",
+  "score": {
+   "label": "seconds aloft",
+   "value": 61.01,
+   "of": 60.0,
+   "unit": "s",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c3_balloon_keepup_s9003",
+  "title": "seed 9003",
+  "scene": "papers/c3_balloon_keepup",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 89.655,
+  "bytes": 35009787,
+  "group": "group_c_v2",
+  "score": {
+   "label": "seconds aloft",
+   "value": 61.01,
+   "of": 60.0,
+   "unit": "s",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L0_s9001",
+  "title": "level L0 \u00b7 seed 9001",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 72.553,
+  "bytes": 20834377,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 9,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L0_s9002",
+  "title": "level L0 \u00b7 seed 9002",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 71.56,
+  "bytes": 20827991,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 7,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L0_s9003",
+  "title": "level L0 \u00b7 seed 9003",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9003,
+  "outcome": "failed:component_flag",
+  "duration_s": 68.645,
+  "bytes": 20788224,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 6,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L1_s9001",
+  "title": "level L1 \u00b7 seed 9001",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 73.654,
+  "bytes": 20905602,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 9,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L1_s9002",
+  "title": "level L1 \u00b7 seed 9002",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 63.559,
+  "bytes": 20791828,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 8,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L1_s9003",
+  "title": "level L1 \u00b7 seed 9003",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 75.542,
+  "bytes": 20868644,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 7,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L2_s9001",
+  "title": "level L2 \u00b7 seed 9001",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9001,
+  "outcome": "failed:component_flag",
+  "duration_s": 79.557,
+  "bytes": 20881705,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 6,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L2_s9002",
+  "title": "level L2 \u00b7 seed 9002",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9002,
+  "outcome": "failed:component_flag",
+  "duration_s": 67.549,
+  "bytes": 20967948,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 6,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L2_s9003",
+  "title": "level L2 \u00b7 seed 9003",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 68.579,
+  "bytes": 20749729,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 7,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L3_s9001",
+  "title": "level L3 \u00b7 seed 9001",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9001,
+  "outcome": "failed:component_flag",
+  "duration_s": 65.739,
+  "bytes": 20864298,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 3,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L3_s9002",
+  "title": "level L3 \u00b7 seed 9002",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9002,
+  "outcome": "failed:component_flag",
+  "duration_s": 74.673,
+  "bytes": 20819956,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 3,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c4_paddle_return_L3_s9003",
+  "title": "level L3 \u00b7 seed 9003",
+  "scene": "papers/c4_paddle_return",
+  "seed": 9003,
+  "outcome": "failed:component_flag",
+  "duration_s": 67.551,
+  "bytes": 20691423,
+  "group": "group_c_v2",
+  "score": {
+   "label": "balls returned",
+   "value": 2,
+   "of": 10,
+   "unit": "balls",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c5_pan_toss_s9001",
+  "title": "seed 9001",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9001,
+  "outcome": "failed:component_flag",
+  "duration_s": 41.373,
+  "bytes": 21172045,
+  "group": "group_c_v2",
+  "score": {
+   "label": "pieces turned over and caught",
+   "value": 25,
+   "of": 40,
+   "unit": "pieces",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c5_pan_toss_s9002",
+  "title": "seed 9002",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 46.132,
+  "bytes": 21171093,
+  "group": "group_c_v2",
+  "score": {
+   "label": "pieces turned over and caught",
+   "value": 33,
+   "of": 40,
+   "unit": "pieces",
+   "better": "higher",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c5_pan_toss_s9003",
+  "title": "seed 9003",
+  "scene": "papers/c5_pan_toss",
+  "seed": 9003,
+  "outcome": "failed:component_flag",
+  "duration_s": 41.291,
+  "bytes": 21131461,
+  "group": "group_c_v2",
+  "score": {
+   "label": "pieces turned over and caught",
+   "value": 26,
+   "of": 40,
+   "unit": "pieces",
+   "better": "higher",
+   "passed": false,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_gentle_s9001",
+  "title": "gentle swing \u00b7 seed 9001",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 177.707,
+  "bytes": 23134946,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 110,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_gentle_s9002",
+  "title": "gentle swing \u00b7 seed 9002",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 93.395,
+  "bytes": 22502277,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 61,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_gentle_s9003",
+  "title": "gentle swing \u00b7 seed 9003",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 32.198,
+  "bytes": 21449189,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 19,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_medium_s9001",
+  "title": "medium swing \u00b7 seed 9001",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 33.578,
+  "bytes": 21534304,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 20,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_medium_s9002",
+  "title": "medium swing \u00b7 seed 9002",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 45.227,
+  "bytes": 21650266,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 28,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_medium_s9003",
+  "title": "medium swing \u00b7 seed 9003",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 29.223,
+  "bytes": 21601712,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 17,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_wide_s9001",
+  "title": "wide swing \u00b7 seed 9001",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9001,
+  "outcome": "success",
+  "duration_s": 25.113,
+  "bytes": 21346980,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 14,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_wide_s9002",
+  "title": "wide swing \u00b7 seed 9002",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9002,
+  "outcome": "success",
+  "duration_s": 30.317,
+  "bytes": 21605277,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 18,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
+  "id": "group_c_v2/c6_banana_swing_wide_s9003",
+  "title": "wide swing \u00b7 seed 9003",
+  "scene": "papers/c6_banana_swing",
+  "seed": 9003,
+  "outcome": "success",
+  "duration_s": 28.083,
+  "bytes": 21583539,
+  "group": "group_c_v2",
+  "score": {
+   "label": "swings until it was taken",
+   "value": 16,
+   "of": null,
+   "unit": "swings",
+   "better": "lower",
+   "passed": true,
+   "final": true
+  }
+ },
+ {
   "id": "interesting/003_tabletop_random_s3_claude",
   "title": "tabletop_random, seed 3",
   "scene": "tabletop_random",
